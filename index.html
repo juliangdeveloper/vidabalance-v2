@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VidaBalance v2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f0f1a;--panel:#1a1a2e;--panel2:#16213e;--accent:#e94560;--accent2:#0f3460;--energy:#f59e0b;--money:#10b981;--happiness:#ec4899;--time:#6366f1;--text:#e8e8e8;--dim:#888;--danger:#ef4444}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.screen{display:none;min-height:100vh;padding:16px}.screen.active{display:flex;flex-direction:column;align-items:center}
+
+/* MENU */
+#menu{justify-content:center;text-align:center}
+#menu h1{font-size:2.8em;margin-bottom:6px;background:linear-gradient(135deg,#ec4899,#f59e0b,#10b981,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+#menu .sub{color:var(--dim);margin-bottom:24px;font-size:1em}
+.ms{background:var(--panel);border-radius:16px;padding:18px;margin:8px 0;max-width:500px;width:100%}
+.ms h3{color:var(--accent);margin-bottom:10px;font-size:0.95em}
+.pr{display:flex;align-items:center;gap:6px;margin:5px 0;padding:7px;background:rgba(255,255,255,0.04);border-radius:8px}
+.pr label{min-width:55px;font-weight:600;font-size:0.9em}
+.pr input[type=text]{flex:1;padding:5px 8px;border-radius:6px;border:1px solid #333;background:#0d1b2a;color:#fff;min-width:0;font-size:0.9em}
+.pr select{padding:5px;border-radius:6px;border:1px solid #333;background:#0d1b2a;color:#fff;font-size:0.85em}
+.btn{padding:10px 28px;border:none;border-radius:10px;font-size:1em;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-p{background:linear-gradient(135deg,#ec4899,#d93a7a);color:#fff}
+.btn-p:hover{transform:scale(1.05);box-shadow:0 4px 20px rgba(236,72,153,0.4)}
+.btn-s{background:#333;color:#fff}.btn-s:hover{background:#444}
+.btn-sm{padding:6px 14px;font-size:0.8em}
+.btn-danger{background:var(--danger);color:#fff}
+.bg{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;justify-content:center}
+.cbtn{width:42px;height:42px;border-radius:50%;border:2px solid #444;background:transparent;color:#fff;font-size:1.1em;cursor:pointer;transition:all .2s}
+.cbtn.on{border-color:var(--accent);background:var(--accent)}
+.pcb{display:flex;gap:6px;justify-content:center;margin:8px 0}
+.pcb label{font-size:0.85em;color:var(--dim)}
+
+/* GAME LAYOUT */
+#game{padding:8px;width:100%}
+.g-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding:0 4px}
+.round-badge{background:var(--panel2);padding:6px 14px;border-radius:12px;font-weight:700;font-size:1em}
+.phase-badge{background:rgba(99,102,241,0.2);border:1px solid var(--time);padding:4px 12px;border-radius:8px;font-size:0.85em;font-weight:600}
+.month-bar{display:flex;gap:2px;justify-content:center;margin:8px 0;flex-wrap:wrap}
+.month-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.6em;font-weight:700;background:#222;color:#555;transition:all .3s}
+.month-dot.done{background:var(--accent2);color:#fff}
+.month-dot.current{background:var(--accent);color:#fff;transform:scale(1.2)}
+
+/* BOARDS */
+.g-main{display:grid;grid-template-columns:1fr 280px;gap:10px;margin-top:8px;width:100%;max-width:1100px}
+@media(max-width:768px){.g-main{grid-template-columns:1fr}}
+
+/* ACTIVITY BOARD */
+.act-board{background:var(--panel);border-radius:14px;padding:12px}
+.act-board h3{font-size:0.9em;color:var(--dim);margin-bottom:8px;text-align:center}
+.act-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.act-card{background:var(--panel2);border-radius:10px;padding:10px;cursor:pointer;transition:all .2s;border:2px solid transparent;position:relative}
+.act-card:hover:not(.disabled){border-color:var(--accent);transform:translateY(-2px)}
+.act-card.disabled{opacity:0.35;pointer-events:none}
+.act-card.occupied{border-color:#555}
+.act-card.fatigued{border-color:var(--danger);background:rgba(239,68,68,0.08)}
+.act-card .ac-icon{font-size:1.4em;margin-bottom:2px}
+.act-card .ac-name{font-size:0.8em;font-weight:700;margin-bottom:2px}
+.act-card .ac-cost{font-size:0.65em;color:var(--dim);line-height:1.3}
+.act-card .ac-slots{position:absolute;top:4px;right:6px;font-size:0.6em;color:var(--dim)}
+.act-card .ac-fatigue{position:absolute;bottom:2px;right:4px;font-size:0.55em;color:var(--danger);font-weight:700}
+
+/* PLAYER PANELS */
+.p-panels{display:flex;flex-direction:column;gap:6px}
+.p-panel{background:var(--panel);border-radius:12px;padding:10px;transition:all .3s}
+.p-panel.current{border:2px solid var(--accent);box-shadow:0 0 15px rgba(233,69,96,0.3)}
+.pp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.pp-name{font-weight:700;font-size:0.9em}
+.pp-score{background:var(--accent);padding:2px 8px;border-radius:10px;font-size:0.8em;font-weight:700}
+.pp-res{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:6px}
+.res-item{display:flex;align-items:center;gap:4px;font-size:0.75em;padding:3px 6px;background:rgba(255,255,255,0.04);border-radius:6px}
+.res-icon{font-size:1em}
+.res-val{font-weight:700}
+.pp-skills{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px}
+.skill-tok{background:rgba(99,102,241,0.3);padding:1px 6px;border-radius:4px;font-size:0.65em}
+.pp-fatigue{font-size:0.6em;color:var(--danger);margin-top:3px}
+
+/* EVENT CARD */
+.event-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;padding:20px}
+.event-overlay.show{display:flex}
+.event-card{background:linear-gradient(135deg,var(--panel),var(--panel2));border-radius:20px;padding:24px;max-width:400px;width:100%;text-align:center;border:2px solid var(--accent)}
+.event-card h2{font-size:1.2em;margin-bottom:6px}
+.event-card .ev-icon{font-size:3em;margin-bottom:8px}
+.event-card p{margin:10px 0;line-height:1.5;font-size:0.9em}
+.ev-opts{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.ev-opt{padding:10px;border-radius:10px;border:2px solid #444;background:rgba(255,255,255,0.05);cursor:pointer;transition:all .2s;font-size:0.85em;text-align:left}
+.ev-opt:hover{border-color:var(--accent);background:rgba(233,69,96,0.1)}
+.ev-opt.bad{border-color:var(--danger)}
+.ev-opt.bad:hover{border-color:var(--danger);background:rgba(239,68,68,0.1)}
+
+/* EVENING MODAL */
+.evening-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:90;align-items:center;justify-content:center;padding:20px}
+.evening-overlay.show{display:flex}
+.evening-card{background:var(--panel);border-radius:16px;padding:20px;max-width:350px;width:100%;text-align:center}
+.evening-card h3{margin-bottom:10px}
+.evening-card p{font-size:0.9em;margin:8px 0;color:var(--dim)}
+.ev-btn{padding:10px;margin:4px;border-radius:10px;border:2px solid #444;background:transparent;color:#fff;cursor:pointer;font-size:0.9em;width:100%;transition:all .2s}
+.ev-btn:hover{border-color:var(--accent)}
+.ev-btn:disabled{opacity:0.3;pointer-events:none}
+
+/* INTERACTION MODAL */
+.inter-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;padding:20px}
+.inter-overlay.show{display:flex}
+.inter-card{background:linear-gradient(135deg,var(--panel2),var(--panel));border-radius:20px;padding:24px;max-width:420px;width:100%;text-align:center;border:2px solid var(--time)}
+.inter-card h2{font-size:1.1em;margin-bottom:6px;color:var(--time)}
+.inter-card .inter-icon{font-size:2.5em;margin-bottom:8px}
+.inter-card p{margin:8px 0;font-size:0.9em;line-height:1.4}
+.inter-opts{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.inter-opt{padding:10px;border-radius:10px;border:2px solid #444;background:rgba(255,255,255,0.05);cursor:pointer;transition:all .2s;font-size:0.85em}
+.inter-opt:hover{border-color:var(--time);background:rgba(99,102,241,0.1)}
+.inter-targets{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:8px 0}
+.inter-target{padding:6px 14px;border-radius:8px;border:2px solid #444;cursor:pointer;font-size:0.85em;font-weight:600;transition:all .2s}
+.inter-target:hover{border-color:var(--accent)}
+
+/* RULES */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:var(--panel);border-radius:16px;padding:20px;max-width:520px;width:100%;max-height:80vh;overflow-y:auto}
+.modal h2{color:var(--accent);margin-bottom:10px;font-size:1.1em}
+.modal p,.modal li{line-height:1.5;font-size:0.88em}
+.modal ul{padding-left:18px;margin:6px 0}
+
+/* TUTORIAL */
+.tut-bg{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:50;display:none;pointer-events:none}
+.tut-bg.show{display:block;pointer-events:auto}
+.tut-box{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--panel);border:2px solid var(--accent);border-radius:14px;padding:14px 20px;max-width:460px;width:calc(100% - 32px);z-index:51;display:none}
+.tut-box.show{display:block}
+.tut-box p{margin-bottom:8px;line-height:1.4;font-size:0.9em}
+.tut-hl{position:fixed;z-index:49;box-shadow:0 0 0 3px var(--accent),0 0 24px rgba(233,69,96,0.5);border-radius:10px;pointer-events:none;display:none}
+.tut-hl.show{display:block}
+
+.msg{background:rgba(236,72,153,0.12);border:1px solid var(--happiness);border-radius:10px;padding:8px 16px;text-align:center;font-weight:600;font-size:0.9em;margin-top:8px;max-width:600px;width:100%}
+
+/* END SCREEN */
+#end{text-align:center;padding-top:30px}
+#end h1{font-size:2.4em;margin-bottom:8px;background:linear-gradient(135deg,#f59e0b,#ec4899,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.end-rank{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--panel);border-radius:12px;margin:6px 0;max-width:450px}
+.end-rank.w{border:2px solid #f5a623}
+.er-pos{font-size:1.5em;width:36px}
+.er-name{flex:1;text-align:left;font-weight:600}
+.er-score{font-weight:700;color:var(--accent)}
+.er-detail{font-size:0.7em;color:var(--dim)}
+.end-breakdown{background:var(--panel);border-radius:12px;padding:14px;margin:12px auto;max-width:450px;text-align:left}
+.end-breakdown h3{color:var(--accent);margin-bottom:8px;font-size:0.9em}
+.eb-row{display:flex;justify-content:space-between;font-size:0.8em;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+</style>
+</head>
+<body>
+
+<!-- MENU -->
+<div id="menu" class="screen active">
+  <h1>🌿 VidaBalance v2</h1>
+  <p class="sub">Gestiona tu vida. Compite. Adapta.</p>
+  <div class="ms">
+    <h3>Jugadores</h3>
+    <div class="pcb" id="pcBtns">
+      <button class="cbtn on" onclick="setPC(2)">2</button>
+      <button class="cbtn" onclick="setPC(3)">3</button>
+      <button class="cbtn" onclick="setPC(4)">4</button>
+    </div>
+    <div id="pSetup"></div>
+  </div>
+  <div class="ms">
+    <h3>Duración</h3>
+    <div class="pcb">
+      <label><input type="radio" name="dur" value="8"> Corta (8 meses)</label>
+      <label><input type="radio" name="dur" value="12" checked> Normal (12 meses)</label>
+      <label><input type="radio" name="dur" value="16"> Larga (16 meses)</label>
+    </div>
+  </div>
+  <div class="bg">
+    <button class="btn btn-p" onclick="startG()">🎲 Jugar</button>
+    <button class="btn btn-s" onclick="startTut()">📖 Tutorial</button>
+    <button class="btn btn-s" onclick="showRules()">📜 Reglas</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen">
+  <div class="g-top">
+    <div class="round-badge" id="roundBadge">Mes 1</div>
+    <div class="phase-badge" id="phaseBadge">🌅 Amanecer</div>
+    <button class="btn btn-s btn-sm" onclick="showRules()">📜</button>
+  </div>
+  <div class="month-bar" id="monthBar"></div>
+  <div class="g-main">
+    <div class="act-board" id="actBoard">
+      <h3>⚡ Actividades (coloca tu tiempo aquí)</h3>
+      <div class="act-grid" id="actGrid"></div>
+    </div>
+    <div class="p-panels" id="pPanels"></div>
+  </div>
+  <div class="msg" id="msg">Preparando...</div>
+</div>
+
+<!-- END -->
+<div id="end" class="screen">
+  <h1>🏆 ¡Fin del Año!</h1>
+  <div id="endRank"></div>
+  <div id="endBreak"></div>
+  <div class="bg">
+    <button class="btn btn-p" onclick="showS('menu')">🏠 Menú</button>
+    <button class="btn btn-s" onclick="startG()">🔄 Revancha</button>
+  </div>
+</div>
+
+<!-- EVENT -->
+<div class="event-overlay" id="eventOv">
+  <div class="event-card" id="eventCard"></div>
+</div>
+
+<!-- EVENING -->
+<div class="evening-overlay" id="eveOv">
+  <div class="evening-card" id="eveCard"></div>
+</div>
+
+<!-- INTERACTION -->
+<div class="inter-overlay" id="interOv">
+  <div class="inter-card" id="interCard"></div>
+</div>
+
+<!-- RULES -->
+<div class="modal-bg" id="rulesM">
+  <div class="modal">
+    <h2>📜 Reglas de VidaBalance v2</h2>
+    <p><strong>Objetivo:</strong> Acumula la mayor FELICIDAD posible en 12 meses.</p>
+    <p><strong>Recursos:</strong></p>
+    <ul>
+      <li>⚡ <strong>Energía:</strong> se restaura +3 cada mes (máx 8+bonus). Se gasta en actividades.</li>
+      <li>💰 <strong>Dinero:</strong> se gana trabajando. Se gasta en actividades sociales.</li>
+      <li>⏰ <strong>Tiempo:</strong> 4 acciones por mes (fijo, no se acumula).</li>
+      <li>❤️ <strong>Felicidad:</strong> ¡el recurso de victoria! Más = mejor.</li>
+    </ul>
+    <p><strong>🆕 Sistema de Fatiga:</strong></p>
+    <ul>
+      <li>Si repites la misma actividad 2+ meses seguidos → <strong style="color:var(--danger)">-1❤️ por repetición</strong></li>
+      <li>Si repites 3+ meses → cuesta <strong style="color:var(--danger)">+1⚡ extra</strong></li>
+      <li>¡Varía tus acciones para evitar la fatiga!</li>
+    </ul>
+    <p><strong>Fases por mes:</strong></p>
+    <ul>
+      <li>🌅 <strong>Amanecer:</strong> restaura energía, saca carta de evento (elige 1 de 2).</li>
+      <li>☀️ <strong>Día:</strong> coloca 4 acciones en actividades (worker placement). ¡Slots compartidos!</li>
+      <li>🤝 <strong>Social:</strong> cartas de interacción entre jugadores.</li>
+      <li>🌙 <strong>Noche:</strong> opcionalmente gasta 2 energía → +1 felicidad (ocio).</li>
+      <li>🛏️ <strong>Descanso:</strong> limpieza, avanza al siguiente mes.</li>
+    </ul>
+    <p><strong>Actividades (8 espacios):</strong></p>
+    <ul>
+      <li>💼 Trabajo: -2⚡ -1⏰ → +3💰</li>
+      <li>💻 Freelance: -1⚡ -1⏰ → +1💰</li>
+      <li>🏋️ Ejercicio: -2⚡ -1⏰ → +1⚡máx, +1❤️</li>
+      <li>📚 Aprender: -1⚡ -1⏰ → token habilidad</li>
+      <li>🎨 Hobbie: -1⚡ -1⏰ → +2❤️</li>
+      <li>👥 Social: -1⚡ -1⏰ -2💰 → +3❤️</li>
+      <li>🏥 Salud: -1⏰ → +1⚡rest, +1❤️</li>
+      <li>🛋️ Descanso: -1⏰ → +2⚡</li>
+    </ul>
+    <p><strong>🆕 Interacción:</strong> Cartas sociales y de competencia afectan a todos los jugadores.</p>
+    <p><strong>Scoring final:</strong> felicidad + bonus habilidades (2=2, 4=6, 6=12) + dinero/5×2 + vida balanceada (+3 si usaste 5+ actividades).</p>
+    <p><strong>Catch-up:</strong> el último jugador gana +1⚡ de restauración por mes.</p>
+    <button class="btn btn-p" onclick="hideRules()">Entendido</button>
+  </div>
+</div>
+
+<!-- TUTORIAL -->
+<div class="tut-bg" id="tutBg"></div>
+<div class="tut-hl" id="tutHl"></div>
+<div class="tut-box" id="tutBox"><p id="tutTx"></p><button class="btn btn-p btn-sm" id="tutBtn" onclick="tutNext()">Siguiente</button></div>
+
+<script>
+const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre','Enero+1','Febrero+1','Marzo+1','Abril+1'];
+
+// ===================== ACTIVITIES (v2 balanced) =====================
+const ACTS=[
+  {id:'work',icon:'💼',name:'Trabajo',cost:'-2⚡ -1⏰',gain:'+3💰',eCost:2,tCost:1,mGain:3,hGain:0,eGain:0,sGain:0,maxSlots:1},
+  {id:'freelance',icon:'💻',name:'Freelance',cost:'-1⚡ -1⏰',gain:'+1💰',eCost:1,tCost:1,mGain:1,hGain:0,eGain:0,sGain:0,maxSlots:1},
+  {id:'exercise',icon:'🏋️',name:'Ejercicio',cost:'-2⚡ -1⏰',gain:'+1⚡máx +1❤️',eCost:2,tCost:1,mGain:0,hGain:1,eGain:0,sGain:0,emaxGain:1,maxSlots:1},
+  {id:'learn',icon:'📚',name:'Aprender',cost:'-1⚡ -1⏰',gain:'+1 habilidad',eCost:1,tCost:1,mGain:0,hGain:0,eGain:0,sGain:1,maxSlots:1},
+  {id:'hobby',icon:'🎨',name:'Hobbie',cost:'-1⚡ -1⏰',gain:'+2❤️',eCost:1,tCost:1,mGain:0,hGain:2,eGain:0,sGain:0,maxSlots:1},
+  {id:'social',icon:'👥',name:'Social',cost:'-1⚡ -1⏰ -2💰',gain:'+3❤️',eCost:1,tCost:1,mGain:-2,hGain:3,eGain:0,sGain:0,maxSlots:1},
+  {id:'health',icon:'🏥',name:'Salud',cost:'-1⏰',gain:'+1⚡rest +1❤️',eCost:0,tCost:1,mGain:0,hGain:1,eGain:1,sGain:0,maxSlots:1},
+  {id:'rest',icon:'🛋️',name:'Descanso',cost:'-1⏰',gain:'+2⚡',eCost:0,tCost:1,mGain:0,hGain:0,eGain:2,sGain:0,maxSlots:1}
+];
+
+// ===================== EVENTS (v2 — more punishing + social) =====================
+const EVENTS=[
+  // Original events (kept)
+  {t:'🍀 Bono inesperado',i:'💰',d:'Tu jefe te dio un bono por buen desempeño.',opts:[{t:'+3💰',ef:g=>{g.m+=3}},{t:'+1❤️',ef:g=>{g.h+=1}}],social:false},
+  {t:'🤒 Resfriado',i:'🤧',d:'Te enfermaste. Pierdes energía.',opts:[{t:'-2⚡ este mes',ef:g=>{g.e=Math.max(0,g.e-2)}},{t:'-1⚡ -1💰 (medicina)',ef:g=>{g.e=Math.max(0,g.e-1);g.m=Math.max(0,g.m-1)}}],social:false},
+  {t:'🎉 Fiesta de amigo',i:'🎊',d:'Te invitaron a una fiesta.',opts:[{t:'Ir (+2❤️ -1⚡)',ef:g=>{g.h+=2;g.e=Math.max(0,g.e-1)}},{t:'Quedarse (+1⚡)',ef:g=>{g.e=Math.min(g.emax,g.e+1)}}],social:false},
+  {t:'📈 Inversión',i:'📊',d:'Una inversión pequeña dio frutos.',opts:[{t:'+2💰',ef:g=>{g.m+=2}},{t:'+1💰 +1❤️',ef:g=>{g.m+=1;g.h+=1}}],social:false},
+  {t:'🎬 Noche de película',i:'🍿',d:'¿Qué prefieres hacer esta noche?',opts:[{t:'Película sola (+1❤️)',ef:g=>{g.h+=1}},{t:'Película con amigos (+2❤️ -1💰)',ef:g=>{g.h+=2;g.m=Math.max(0,g.m-1)}}],social:false},
+  {t:'🌻 Día soleado',i:'☀️',d:'¡Hermoso día! ¿Qué harás?',opts:[{t:'Caminar (+1❤️ +1⚡rest)',ef:g=>{g.h+=1;g.e=Math.min(g.emax,g.e+1)}},{t:'Descansar (+2⚡)',ef:g=>{g.e=Math.min(g.emax,g.e+2)}}],social:false},
+  {t:'📚 Curso online gratis',i:'🎓',d:'Encontraste un curso gratuito.',opts:[{t:'Tomarlo (+1 habilidad)',ef:g=>{g.sk++}},{t:'Ignorar (+1❤️ descanso)',ef:g=>{g.h+=1}}],social:false},
+  {t:'💼 Oportunidad laboral',i:'👔',d:'Te ofrecieron un proyecto extra.',opts:[{t:'Aceptar (+4💰 -2⚡)',ef:g=>{g.m+=4;g.e=Math.max(0,g.e-2)}},{t:'Rechazar (+1❤️)',ef:g=>{g.h+=1}}],social:false},
+  {t:'🐱 Mascota',i:'🐾',d:'Encontraste un gatito abandonado.',opts:[{t:'Adoptarlo (+3❤️ -1💰/mes)',ef:g=>{g.h+=3;g.m=Math.max(0,g.m-1);g.pet=true}},{t:'Buscar dueño (+1❤️)',ef:g=>{g.h+=1}}],social:false},
+  {t:'🎁 Regalo',i:'🎁',d:'Un amigo te dio un regalo.',opts:[{t:'Dinero (+2💰)',ef:g=>{g.m+=2}},{t:'Experiencia (+2❤️)',ef:g=>{g.h+=2}}],social:false},
+  {t:'🏆 Reconocimiento',i:'🏅',d:'Te reconocieron en el trabajo.',opts:[{t:'+2💰 +1❤️',ef:g=>{g.m+=2;g.h+=1}},{t:'+3❤️',ef:g=>{g.h+=3}}],social:false},
+  {t:'💪 Reto fitness',i:'🏋️',d:'Un amigo te reta a hacer ejercicio.',opts:[{t:'Aceptar (+2❤️ -2⚡)',ef:g=>{g.h+=2;g.e=Math.max(0,g.e-2)}},{t:'Rechazar (+1⚡)',ef:g=>{g.e=Math.min(g.emax,g.e+1)}}],social:false},
+  {t:'🎂 Cumpleaños',i:'🎂',d:'¡Es tu cumpleaños!',opts:[{t:'Fiesta (+3❤️ -1💰)',ef:g=>{g.h+=3;g.m=Math.max(0,g.m-1)}},{t:'Tranquilo (+2❤️ +1💰 regalo)',ef:g=>{g.h+=2;g.m+=1}}],social:false},
+  // NEW punishing events
+  {t:'🏚️ Desalojo',i:'🏚️',d:'Te están desalojando. Necesitas dinero urgente.',opts:[{t:'Pagar abogado (-3💰)',ef:g=>{g.m=Math.max(0,g.m-3)}},{t:'Perder tiempo (-2⚡ -1❤️)',ef:g=>{g.e=Math.max(0,g.e-2);g.h=Math.max(0,g.h-1)}}],social:false},
+  {t:'💔 Ruptura sentimental',i:'💔',d:'Tu relación terminó. Estás destrozado.',opts:[{t:'Llorar (-3❤️)',ef:g=>{g.h=Math.max(0,g.h-3)}},{t:'Salir con amigos (-2💰 +1❤️)',ef:g=>{g.m=Math.max(0,g.m-2);g.h+=1}}],social:false},
+  {t:'🔥 Burnout',i:'🔥',d:'Estás agotado. Todo cuesta más.',opts:[{t:'Forzar (-3⚡ si tienes, si no -2❤️)',ef:g=>{if(g.e>=3)g.e=Math.max(0,g.e-3);else g.h=Math.max(0,g.h-2)}},{t:'Parar (-1⏰ este mes)',ef:g=>{g.tok=Math.max(0,g.tok-1)}}],social:false},
+  {t:'⚖️ Demanda legal',i:'⚖️',d:'Te demandaron por un accidente.',opts:[{t:'Pagar (-4💰)',ef:g=>{g.m=Math.max(0,g.m-4)}},{t:'Defenderte (-2❤️ -1⚡)',ef:g=>{g.h=Math.max(0,g.h-2);g.e=Math.max(0,g.e-1)}}],social:false},
+  {t:'🌪️ Desastre natural',i:'🌪️',d:'Una tormenta dañó tu casa.',opts:[{t:'Reparar (-3💰 -1⚡)',ef:g=>{g.m=Math.max(0,g.m-3);g.e=Math.max(0,g.e-1)}},{t:'Ignorar (-2❤️)',ef:g=>{g.h=Math.max(0,g.h-2)}}],social:false},
+  {t:'📉 Inversión fallida',i:'📉',d:'Tu inversión se desplomó.',opts:[{t:'Perder (-2💰)',ef:g=>{g.m=Math.max(0,g.m-2)}},{t:'Vender barato (-1💰 -1❤️)',ef:g=>{g.m=Math.max(0,g.m-1);g.h=Math.max(0,g.h-1)}}],social:false},
+  {t:'🦠 Enfermedad seria',i:'🦠',d:'Te diagnosticaron algo. Necesitas tratamiento.',opts:[{t:'Tratamiento completo (-3💰 +1❤️)',ef:g=>{g.m=Math.max(0,g.m-3);g.h+=1}},{t:'Ignorar (-2❤️ -1⚡)',ef:g=>{g.h=Math.max(0,g.h-2);g.e=Math.max(0,g.e-1)}}],social:false},
+  // Social events (affect ALL players)
+  {t:'🤝 Conferencia profesional',i:'🤝',d:'Hay una conferencia. Todos pueden asistir.',opts:[{t:'Asistir (+1📚 -1⚡)',ef:g=>{g.sk++;g.e=Math.max(0,g.e-1)}},{t:'No ir (+1⚡)',ef:g=>{g.e=Math.min(g.emax,g.e+1)}}],social:true},
+  {t:'🏆 Competencia laboral',i:'🏆',d:'Tu empresa lanza una competencia de productividad.',opts:[{t:'Participar (-1⚡)',ef:g=>{g.e=Math.max(0,g.e-1)}},{t:'No participar',ef:g=>{}}],social:true,resolve:'workcomp'},
+  {t:'🎭 Festival de la ciudad',i:'🎭',d:'¡Hay un festival! ¿Vas a participar o trabajar?',opts:[{t:'Festival (-1💰 +2❤️)',ef:g=>{g.m=Math.max(0,g.m-1);g.h+=2}},{t:'Trabajar (+2💰 -1❤️)',ef:g=>{g.m+=2;g.h=Math.max(0,g.h-1)}}],social:true},
+  {t:'🗳️ Votación popular',i:'🗳️',d:'Votan quién debe hacer una tarea comunitaria.',opts:[{t:'Votar',ef:g=>{}},{t:'Abstenerse (+1⚡)',ef:g=>{g.e=Math.min(g.emax,g.e+1)}}],social:true,resolve:'vote'}
+];
+
+// Interaction cards (separate deck)
+const INTERACTIONS=[
+  {t:'🎁 Intercambio',i:'🎁',d:'Puedes intercambiar recursos con otro jugador.',type:'swap'},
+  {t:'💼 Sabotaje',i:'💼',d:'Sabotea la próxima actividad de otro jugador.',type:'sabotage'},
+  {t:'🤜 Competencia',i:'🤜',d:'¡Reta a otro jugador! El más feliz gana.',type:'compete'},
+  {t:'🎓 Tutoría',i:'🎓',d:'El jugador con más habilidades ayuda al que tiene menos.',type:'tutor'},
+  {t:'💰 Préstamo',i:'💰',d:'Puedes pedir prestado dinero a otro jugador.',type:'loan'}
+];
+
+const PCOL=['#ec4899','#6366f1','#10b981','#f59e0b'];
+
+let G={players:[],round:0,maxRounds:12,phase:'dawn',curP:0,actionsLeft:0,isTut:false,actSlots:[],deck:[],interDeck:[],over:false,
+  ptmp:null,pet:[],usedActs:[],fatigue:[],sabotaged:[],skipNext:[]};
+
+// ===================== SETUP =====================
+function setPC(n){document.querySelectorAll('.cbtn').forEach((b,i)=>b.classList.toggle('on',i===n-2));renderPS(n)}
+function renderPS(n){let h='';for(let i=0;i<n;i++)h+=`<div class="pr"><label style="color:${PCOL[i]}">P${i+1}</label><input type="text" id="pn${i}" placeholder="Jugador ${i+1}" maxlength="10"><select id="pt${i}"><option value="human">Humano</option><option value="easy">IA Fácil</option><option value="medium">IA Media</option><option value="hard">IA Difícil</option></select></div>`;document.getElementById('pSetup').innerHTML=h}
+function getPC(){const a=document.querySelector('.cbtn.on');return a?parseInt(a.textContent):2}
+function getDur(){return parseInt(document.querySelector('input[name=dur]:checked')?.value||12)}
+
+// ===================== START =====================
+function startG(tut=false){
+  const n=getPC();G.players=[];G.isTut=tut;G.over=false;
+  for(let i=0;i<n;i++){
+    const nm=document.getElementById(`pn${i}`)?.value.trim()||`Jugador ${i+1}`;
+    const tp=document.getElementById(`pt${i}`)?.value||'human';
+    G.players.push({name:nm,type:tp,color:PCOL[i],e:4,emax:8,m:3,h:0,sk:0,tok:4,actsUsed:new Set()});
+  }
+  G.maxRounds=tut?3:getDur();G.round=0;G.pet=new Array(n).fill(false);
+  G.usedActs=new Array(n).fill(null).map(()=>new Set());
+  G.fatigue=new Array(n).fill(null).map(()=>({})); // {activityId: consecutiveMonths}
+  G.sabotaged=new Array(n).fill(false);
+  G.skipNext=new Array(n).fill(false);
+  G.deck=[...EVENTS].sort(()=>Math.random()-0.5);
+  G.interDeck=[...INTERACTIONS].sort(()=>Math.random()-0.5);
+  startMonth();showS('game');
+}
+
+// ===================== MONTH =====================
+function startMonth(){
+  G.round++;G.phase='dawn';G.curP=0;
+  G.players.forEach((p,i)=>{
+    if(G.skipNext[i]){G.skipNext[i]=false;return} // skipped this month
+    const bonus=G.pet[i]?1:0;
+    const catchup=(i===lastPlace())?1:0;
+    p.e=Math.min(p.emax,3+bonus+catchup+p.e); // v2: +3 base (was +5)
+    if(p.e>p.emax)p.e=p.emax;
+    p.tok=4;p.actsUsed=new Set();
+    G.sabotaged[i]=false;
+  });
+  renderAll();
+  showEvent(0);
+}
+
+function lastPlace(){
+  let minH=Infinity,li=0;
+  G.players.forEach((p,i)=>{if(p.h<minH){minH=p.h;li=i}});
+  return li;
+}
+
+// ===================== FATIGUE =====================
+function getFatigueCost(pIdx,actId){
+  const f=G.fatigue[pIdx];
+  const consecutive=f[actId]||0;
+  return{hPenalty:consecutive>=1?consecutive:0,ePenalty:consecutive>=2?1:0,consecutive};
+}
+
+function updateFatigue(pIdx,actId){
+  const f=G.fatigue[pIdx];
+  // Reset all other activities, increment this one
+  for(const k in f){if(k!==actId)f[k]=0}
+  f[actId]=(f[actId]||0)+1;
+}
+
+// ===================== EVENTS =====================
+function showEvent(pi){
+  if(pi>=G.players.length){startDay();return}
+  const p=G.players[pi];
+  if(G.skipNext[pi]){showEvent(pi+1);return}
+  if(p.type!=='human'){
+    const ev=G.deck.pop()||EVENTS[Math.floor(Math.random()*EVENTS.length)];
+    const opt=ev.opts[Math.floor(Math.random()*ev.opts.length)];
+    applyEvent(p,opt);
+    if(ev.social)applySocialEvent(ev,pi);
+    showEvent(pi+1);
+    return;
+  }
+  const ev=G.deck.pop()||EVENTS[Math.floor(Math.random()*EVENTS.length)];
+  const ov=document.getElementById('eventOv');
+  const card=document.getElementById('eventCard');
+  const socialBadge=ev.social?'<span style="color:var(--time);font-size:0.75em">🌍 Evento Social</span><br>':'';
+  card.innerHTML=`<div class="ev-icon">${ev.i}</div><h2>${ev.t}</h2>${socialBadge}<p>${ev.d}</p><p style="font-size:0.8em;color:var(--dim)">${p.name}</p><div class="ev-opts">${ev.opts.map((o,i)=>`<div class="ev-opt" onclick="pickEvent(${pi},${i})">${o.t}</div>`).join('')}</div>`;
+  ov.classList.add('show');
+  G._curEv=ev;
+}
+
+function pickEvent(pi,optIdx){
+  document.getElementById('eventOv').classList.remove('show');
+  applyEvent(G.players[pi],G._curEv.opts[optIdx]);
+  if(G._curEv.social)applySocialEvent(G._curEv,pi);
+  showEvent(pi+1);
+}
+
+function applyEvent(p,opt){
+  const g={e:p.e,emax:p.emax,m:p.m,h:p.h,sk:0,tok:p.tok||4,pet:false};
+  opt.ef(g);
+  p.e=Math.max(0,Math.min(p.emax,g.e));p.m=Math.max(0,g.m);p.h=Math.max(0,g.h);p.sk+=g.sk;
+  if(g.tok!==undefined)p.tok=g.tok;
+}
+
+function applySocialEvent(ev,triggerPi){
+  // Social events: resolve for ALL players
+  if(ev.resolve==='workcomp'){
+    // Player with most money gets +2h, others -1h
+    let maxM=0,maxI=0;
+    G.players.forEach((p,i)=>{if(p.m>maxM){maxM=p.m;maxI=i}});
+    G.players.forEach((p,i)=>{if(i===maxI)p.h+=2;else p.h=Math.max(0,p.h-1)});
+  }else if(ev.resolve==='vote'){
+    // Random player loses 1 energy
+    const victim=Math.floor(Math.random()*G.players.length);
+    G.players[victim].e=Math.max(0,G.players[victim].e-1);
+  }
+}
+
+// ===================== INTERACTION PHASE =====================
+function startInteraction(){
+  G.phase='interaction';G.curP=0;
+  showInteraction(0);
+}
+
+function showInteraction(pi){
+  if(pi>=G.players.length){startEvening();return}
+  const p=G.players[pi];
+  if(G.skipNext[pi]){showInteraction(pi+1);return}
+  if(p.type!=='human'){
+    // AI picks interaction target
+    const card=G.interDeck[G.interDeck.length-1]||INTERACTIONS[0];
+    G.interDeck.pop();if(G.interDeck.length===0)G.interDeck=[...INTERACTIONS].sort(()=>Math.random()-0.5);
+    aiInteraction(p,card,pi);
+    showInteraction(pi+1);
+    return;
+  }
+  const card=G.interDeck.pop()||INTERACTIONS[Math.floor(Math.random()*INTERACTIONS.length)];
+  if(G.interDeck.length===0)G.interDeck=[...INTERACTIONS].sort(()=>Math.random()-0.5);
+
+  const ov=document.getElementById('interOv');
+  const c=document.getElementById('interCard');
+  const otherPlayers=G.players.map((op,oi)=>oi!==pi?oi:-1).filter(oi=>oi>=0);
+  const targets=otherPlayers.map(oi=>`<div class="inter-target" style="color:${G.players[oi].color}" onclick="resolveInteraction(${pi},${oi},'${card.type}')">${G.players[oi].name}</div>`).join('');
+
+  c.innerHTML=`<div class="inter-icon">${card.i}</div><h2>${card.t}</h2><p>${card.d}</p>
+    <p style="font-size:0.8em;color:var(--dim)">${p.name} elige objetivo:</p>
+    <div class="inter-targets">${targets}</div>
+    <button class="btn btn-s btn-sm" onclick="skipInteraction(${pi})" style="margin-top:8px">Saltar</button>`;
+  ov.classList.add('show');
+}
+
+function skipInteraction(pi){
+  document.getElementById('interOv').classList.remove('show');
+  showInteraction(pi+1);
+}
+
+function resolveInteraction(pi,targetPi,type){
+  document.getElementById('interOv').classList.remove('show');
+  const p=G.players[pi],t=G.players[targetPi];
+  switch(type){
+    case'swap':
+      // Swap 2 money for 2 happiness
+      if(p.m>=2&&t.h>=2){p.m-=2;p.h+=2;t.h-=2;t.m+=2}
+      else if(t.m>=2&&p.h>=2){t.m-=2;t.h+=2;p.h-=2;p.m+=2}
+      break;
+    case'sabotage':
+      G.sabotaged[targetPi]=true;
+      break;
+    case'compete':
+      if(p.h>t.h){p.h+=2;t.h=Math.max(0,t.h-1)}
+      else if(t.h>p.h){t.h+=2;p.h=Math.max(0,p.h-1)}
+      break;
+    case'tutor':
+      let maxSk=0,minSk=999,maxI=0,minI=0;
+      G.players.forEach((pl,i)=>{if(pl.sk>maxSk){maxSk=pl.sk;maxI=i}if(pl.sk<minSk){minSk=pl.sk;minI=i}});
+      if(maxI!==minI){G.players[maxI].h+=1;G.players[minI].h+=1}
+      break;
+    case'loan':
+      if(t.m>=2){t.m-=2;p.m+=2}
+      break;
+  }
+  renderAll();
+  showInteraction(pi+1);
+}
+
+function aiInteraction(p,card,pi){
+  // AI picks random target
+  const others=G.players.map((_,i)=>i).filter(i=>i!==pi);
+  if(others.length===0)return;
+  const target=others[Math.floor(Math.random()*others.length)];
+  resolveInteraction(pi,target,card.type);
+}
+
+// ===================== DAY (Worker Placement) =====================
+function startDay(){
+  G.phase='day';G.curP=0;G.actionsLeft=G.players[0].tok;
+  G.actSlots=ACTS.map(a=>a.maxSlots);
+  renderAll();
+  setMsg(`☀️ ${G.players[0].name}: elige una actividad (${G.actionsLeft} acciones)`);
+  if(G.players[0].type!=='human')setTimeout(aiAct,500);
+}
+
+function canDo(p,ai,pIdx){
+  const a=ACTS[ai];
+  if(G.actSlots[ai]<=0)return false;
+  if(p.tok<=0)return false;
+  // Fatigue energy penalty
+  const fat=getFatigueCost(pIdx,a.id);
+  const totalEcost=a.eCost+fat.ePenalty;
+  if(p.e<totalEcost)return false;
+  if(a.id==='social'&&p.m<2)return false; // v2: costs 2 money
+  if(G.sabotaged[pIdx]&&a.eCost>0&&p.e<a.eCost+1)return false; // sabotage adds +1 cost
+  return true;
+}
+
+function doAct(ai){
+  const pIdx=G.curP;
+  const p=G.players[pIdx];
+  if(!canDo(p,ai,pIdx))return;
+  const a=ACTS[ai];
+
+  // Fatigue penalties
+  const fat=getFatigueCost(pIdx,a.id);
+  const hPenalty=fat.hPenalty;
+  const ePenalty=fat.ePenalty;
+  const saboExtra=G.sabotaged[pIdx]&&a.eCost>0?1:0;
+
+  p.e-=(a.eCost+ePenalty+saboExtra);
+  p.tok-=a.tCost;
+  p.m+=a.mGain;
+  p.h+=a.hGain;
+  p.h=Math.max(0,p.h-hPenalty); // fatigue happiness penalty
+  p.e=Math.min(p.emax,p.e+a.eGain);
+  if(a.emaxGain)p.emax+=a.emaxGain;
+  if(a.sGain)p.sk+=a.sGain;
+  G.actSlots[ai]--;
+  G.usedActs[pIdx].add(a.id);
+  p.actsUsed.add(a.id);
+
+  // Update fatigue
+  updateFatigue(pIdx,a.id);
+
+  renderAll();
+  G.actionsLeft=p.tok;
+  if(G.actionsLeft<=0){
+    nextPlayer();
+  }else{
+    let msg=`${p.name}: ${G.actionsLeft} acciones restantes`;
+    if(hPenalty>0)msg+=` ⚠️ Fatiga: -${hPenalty}❤️`;
+    if(ePenalty>0)msg+=` ⚠️ +${ePenalty}⚡ extra`;
+    setMsg(msg);
+    if(p.type!=='human')setTimeout(aiAct,400);
+  }
+}
+
+function nextPlayer(){
+  G.curP++;
+  if(G.curP>=G.players.length){startInteraction();return}
+  if(G.skipNext[G.curP]){nextPlayer();return}
+  G.actionsLeft=G.players[G.curP].tok;
+  G.actSlots=ACTS.map(a=>a.maxSlots);
+  renderAll();
+  setMsg(`Turno de ${G.players[G.curP].name}`);
+  if(G.players[G.curP].type!=='human')setTimeout(aiAct,500);
+}
+
+// ===================== AI =====================
+function aiAct(){
+  const pIdx=G.curP;
+  const p=G.players[pIdx];
+  const avail=[];
+  ACTS.forEach((a,i)=>{if(canDo(p,i,pIdx))avail.push(i)});
+  if(avail.length===0){nextPlayer();return}
+
+  let pick;
+  if(p.type==='easy'){
+    pick=avail[Math.floor(Math.random()*avail.length)];
+  }else if(p.type==='medium'){
+    pick=avail.reduce((best,i)=>{
+      const a=ACTS[i];const fat=getFatigueCost(pIdx,a.id);
+      const score=(a.hGain-fat.hPenalty)/(a.eCost+fat.ePenalty||0.5);
+      const ba=ACTS[best];const bfat=getFatigueCost(pIdx,ba.id);
+      const bs=(ba.hGain-bfat.hPenalty)/(ba.eCost+bfat.ePenalty||0.5);
+      return score>bs?i:best;
+    },avail[0]);
+  }else{
+    pick=avail.reduce((best,i)=>{
+      const a=ACTS[i];const fat=getFatigueCost(pIdx,a.id);
+      let score=(a.hGain-fat.hPenalty)*2+a.mGain*0.3+a.sGain*4-fat.ePenalty;
+      if(p.sk===1&&a.sGain)score+=6;
+      if(p.sk===3&&a.sGain)score+=10;
+      if(a.id==='exercise'&&p.emax<12)score+=2;
+      if(fat.consecutive>=2)score-=3; // avoid fatigue
+      const ba=ACTS[best];const bfat=getFatigueCost(pIdx,ba.id);
+      let bs=(ba.hGain-bfat.hPenalty)*2+ba.mGain*0.3+ba.sGain*4-bfat.ePenalty;
+      if(p.sk===1&&ba.sGain)bs+=6;
+      if(p.sk===3&&ba.sGain)bs+=10;
+      if(ba.id==='exercise'&&p.emax<12)bs+=2;
+      if(bfat.consecutive>=2)bs-=3;
+      return score>bs?i:best;
+    },avail[0]);
+  }
+  doAct(pick);
+}
+
+// ===================== EVENING =====================
+function startEvening(){
+  G.phase='evening';G.curP=0;
+  showEveOpt(0);
+}
+
+function showEveOpt(pi){
+  if(pi>=G.players.length){endMonth();return}
+  const p=G.players[pi];
+  if(G.skipNext[pi]){showEveOpt(pi+1);return}
+  if(p.type!=='human'){
+    if(p.e>=2&&p.h<G.players.reduce((s,q)=>s+q.h,0)/G.players.length)p.h+=1;
+    showEveOpt(pi+1);return;
+  }
+  if(p.e<2){showEveOpt(pi+1);return}
+  const ov=document.getElementById('eveOv');
+  document.getElementById('eveCard').innerHTML=`<h3>🌙 Noche — ${p.name}</h3><p>¿Quieres usar energía para ocio?</p><p>⚡${p.e} disponibles</p><button class="ev-btn" onclick="eveChoice(${pi},true)">🌙 Ocio: -2⚡ → +1❤️</button><button class="ev-btn" onclick="eveChoice(${pi},false)">🛏️ Descansar</button>`;
+  ov.classList.add('show');
+}
+
+function eveChoice(pi,doIt){
+  document.getElementById('eveOv').classList.remove('show');
+  if(doIt){G.players[pi].e-=2;G.players[pi].h+=1}
+  renderAll();
+  showEveOpt(pi+1);
+}
+
+// ===================== END MONTH =====================
+function endMonth(){
+  G.phase='night';
+  G.players.forEach((p,i)=>{if(G.pet[i])p.m=Math.max(0,p.m-1)});
+  if(G.round>=G.maxRounds){endGame();return}
+  renderAll();
+  setMsg(`Mes ${G.round} terminado. Siguiente mes...`);
+  setTimeout(startMonth,1500);
+}
+
+// ===================== END GAME =====================
+function endGame(){
+  G.over=true;
+  showS('end');
+  const finals=G.players.map((p,i)=>{
+    const skillBonus=p.sk>=6?12:p.sk>=4?6:p.sk>=2?2:0;
+    const moneyBonus=Math.floor(p.m/5)*2;
+    const balanceBonus=p.actsUsed.size>=5?3:0;
+    const total=p.h+skillBonus+moneyBonus+balanceBonus;
+    return{...p,idx:i,skillBonus,moneyBonus,balanceBonus,total};
+  });
+  finals.sort((a,b)=>b.total-a.total);
+  const medals=['🥇','🥈','🥉','4️⃣'];
+  document.getElementById('endRank').innerHTML=finals.map((p,i)=>`<div class="end-rank ${i===0?'w':''}"><span class="er-pos">${medals[i]}</span><span class="er-name" style="color:${p.color}">${p.name}</span><span class="er-score">${p.total}❤️</span></div><div style="font-size:0.7em;color:var(--dim);margin:-4px 0 4px 46px">Base:${p.h} + Skills:${p.skillBonus} + Dinero:${p.moneyBonus} + Balance:${p.balanceBonus}</div>`).join('');
+
+  const winner=finals[0];
+  document.getElementById('endBreak').innerHTML=`<div class="end-breakdown"><h3>📊 Desglose del ganador: ${winner.name}</h3><div class="eb-row"><span>❤️ Felicidad base</span><span>${winner.h}</span></div><div class="eb-row"><span>📚 Bonus habilidades (${winner.sk} tokens)</span><span>+${winner.skillBonus}</span></div><div class="eb-row"><span>💰 Dinero → felicidad (${winner.m}💰)</span><span>+${winner.moneyBonus}</span></div><div class="eb-row"><span>🎯 Vida balanceada (${winner.actsUsed.size} actividades)</span><span>+${winner.balanceBonus}</span></div><div class="eb-row" style="font-weight:700;border-top:2px solid var(--accent);padding-top:4px"><span>TOTAL</span><span>${winner.total}❤️</span></div></div>`;
+}
+
+// ===================== RENDER =====================
+function renderAll(){
+  renderMonthBar();renderActs();renderPanels();renderPhaseBadge();
+}
+
+function renderMonthBar(){
+  const bar=document.getElementById('monthBar');let h='';
+  const months=MONTHS.slice(0,G.maxRounds);
+  months.forEach((m,i)=>{const cls=i<G.round-1?'done':i===G.round-1?'current':'';h+=`<div class="month-dot ${cls}" title="${m}">${(i+1)}</div>`});
+  bar.innerHTML=h;
+  document.getElementById('roundBadge').textContent=`${MONTHS[Math.min(G.round-1,15)]} — Mes ${G.round}/${G.maxRounds}`;
+}
+
+function renderPhaseBadge(){
+  const phases={dawn:'🌅 Amanecer',day:'☀️ Día',interaction:'🤝 Social',evening:'🌙 Noche',night:'🛏️ Descanso'};
+  document.getElementById('phaseBadge').textContent=phases[G.phase]||'';
+}
+
+function renderActs(){
+  const grid=document.getElementById('actGrid');
+  const p=G.players[G.curP];
+  const pIdx=G.curP;
+  grid.innerHTML=ACTS.map((a,i)=>{
+    const disabled=G.phase!=='day'||!p||!canDo(p,i,pIdx);
+    const slots=G.actSlots[i];
+    const fat=getFatigueCost(pIdx,a.id);
+    const isFatigued=fat.consecutive>=1;
+    let fatLabel='';
+    if(fat.consecutive>=2)fatLabel=`⚠️ Fatiga ×${fat.consecutive} (+${fat.ePenalty}⚡, -${fat.hPenalty}❤️)`;
+    else if(fat.consecutive>=1)fatLabel=`⚠️ Fatiga ×${fat.consecutive} (-${fat.hPenalty}❤️)`;
+
+    return`<div class="act-card ${disabled?'disabled':''} ${isFatigued?'fatigued':''}" onclick="doAct(${i})">
+      <div class="ac-icon">${a.icon}</div><div class="ac-name">${a.name}</div>
+      <div class="ac-cost">${a.cost}<br>${a.gain}</div>
+      <div class="ac-slots">(${slots})</div>
+      ${fatLabel?`<div class="ac-fatigue">${fatLabel}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderPanels(){
+  const pp=document.getElementById('pPanels');
+  pp.innerHTML=G.players.map((p,i)=>{
+    const isCur=i===G.curP&&!G.over;
+    const skillBonus=p.sk>=6?12:p.sk>=4?6:p.sk>=2?2:0;
+    const fatKeys=Object.keys(G.fatigue[i]||{}).filter(k=>G.fatigue[i][k]>0);
+    const fatLabel=fatKeys.length>0?`⚠️ Fatiga: ${fatKeys.map(k=>ACTS.find(a=>a.id===k)?.name).join(', ')}`:'';
+    return`<div class="p-panel ${isCur?'current':''}">
+      <div class="pp-head"><span class="pp-name" style="color:${p.color}">${p.name}</span>
+      <span class="pp-score">${p.h+skillBonus}❤️</span></div>
+      <div class="pp-res">
+        <div class="res-item"><span class="res-icon">⚡</span><span class="res-val">${p.e}/${p.emax}</span></div>
+        <div class="res-item"><span class="res-icon">💰</span><span class="res-val">${p.m}</span></div>
+        <div class="res-item"><span class="res-icon">❤️</span><span class="res-val">${p.h}</span></div>
+        <div class="res-item"><span class="res-icon">📚</span><span class="res-val">${p.sk}</span></div>
+      </div>
+      ${p.sk>0?'<div class="pp-skills">'+Array(p.sk).fill('<span class="skill-tok">📖</span>').join('')+'</div>':''}
+      ${fatLabel?`<div class="pp-fatigue">${fatLabel}</div>`:''}
+      ${G.sabotaged[i]?'<div class="pp-fatigue">💼 Sabotaje activo (+1⚡ por acción)</div>':''}
+    </div>`;
+  }).join('');
+}
+
+// ===================== TUTORIAL =====================
+let tutS=0;
+const TUT=[
+  {t:'¡Bienvenido a VidaBalance v2! 🌿 Ahora con fatiga, eventos más duros e interacción entre jugadores.',h:null},
+  {t:'⚡ Energía nerfeada: solo +3/mes (antes +5), máximo base 8 (antes 10). ¡Adminístrala bien!',h:null},
+  {t:'🆕 SISTEMA DE FATIGA: si repites la misma actividad meses seguidos, pierdes ❤️ y cuesta más ⚡. ¡Varía!',h:null},
+  {t:'Los slots de actividad son COMPARTIDOS (1 por actividad). Si otro jugador ocupa un slot, no puedes usarlo.',h:null},
+  {t:'🆕 Fase SOCIAL: después del Día, hay cartas de interacción entre jugadores (competencia, sabotaje, intercambio).',h:null},
+  {t:'Los eventos ahora incluyen burnout, desalojo, crisis y más. ¡Cuidado!',h:null},
+  {t:'Al final: felicidad + bonus habilidades (2=2, 4=6, 6=12) + dinero/5×2 + vida balanceada (+3 si usas 5+ actividades).',h:null},
+  {t:'¡Vamos a jugar! Elige una carta de evento para comenzar.',h:null}
+];
+function startTut(){
+  G.isTut=true;
+  G.players=[{name:'Tú',type:'human',color:PCOL[0],e:4,emax:8,m:3,h:0,sk:0,tok:4,actsUsed:new Set()},{name:'IA Demo',type:'easy',color:PCOL[1],e:4,emax:8,m:3,h:0,sk:0,tok:4,actsUsed:new Set()}];
+  G.maxRounds=3;G.round=0;G.pet=[false,false];
+  G.usedActs=[new Set(),new Set()];
+  G.fatigue=[{},{}];G.sabotaged=[false,false];G.skipNext=[false,false];
+  G.deck=[...EVENTS].sort(()=>Math.random()-0.5);
+  G.interDeck=[...INTERACTIONS].sort(()=>Math.random()-0.5);
+  startMonth();showS('game');tutS=0;showTut();
+}
+function showTut(){
+  const bg=document.getElementById('tutBg'),box=document.getElementById('tutBox'),hl=document.getElementById('tutHl'),tx=document.getElementById('tutTx'),btn=document.getElementById('tutBtn');
+  if(tutS>=TUT.length){bg.classList.remove('show');box.classList.remove('show');hl.classList.remove('show');return}
+  const s=TUT[tutS];tx.textContent=s.t;btn.textContent=tutS===TUT.length-1?'¡Jugar!':'Siguiente';
+  bg.classList.add('show');box.classList.add('show');
+  if(s.h){const el=document.querySelector(s.h);if(el){const r=el.getBoundingClientRect();hl.style.top=r.top-3+'px';hl.style.left=r.left-3+'px';hl.style.width=r.width+6+'px';hl.style.height=r.height+6+'px';hl.classList.add('show')}}else hl.classList.remove('show');
+}
+function tutNext(){tutS++;showTut()}
+
+// ===================== UI =====================
+function showS(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function setMsg(m){document.getElementById('msg').textContent=m}
+function showRules(){document.getElementById('rulesM').classList.add('show')}
+function hideRules(){document.getElementById('rulesM').classList.remove('show')}
+
+// ===================== INIT =====================
+renderPS(2);
+</script>
+</body>
+</html>
