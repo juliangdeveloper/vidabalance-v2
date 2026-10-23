@@ -1,44 +1,41 @@
-// Match progress for vidabalance-v2. The meta record is updated from play; vidabalance.save is only read.
 (function (root) {
   const SLUG = 'vidabalance-v2';
-  const APP_VERSION = '1.0.4';
+  const APP_VERSION = '1.0.5';
   const SAVE_KEY = 'vidabalance.save';
   const META_KEY = 'meta.v1.' + SLUG;
 
-  // Declared stats, in write order. At most 20. Monotonic keys never decrease.
   const STATS = [
-    { key: 'games_finished', monotonic: true }, // finished matches, tutorial excluded
-    { key: 'tutorials_finished', monotonic: true }, // tutorial step sequences completed
-    { key: 'best_score', monotonic: true }, // highest final score on the end screen
-    { key: 'best_happiness', monotonic: true }, // highest base happiness
-    { key: 'best_skills', monotonic: true }, // highest skill tokens
-    { key: 'best_money', monotonic: true }, // highest money
-    { key: 'best_activities', monotonic: true }, // most distinct activities in one match
-    { key: 'balanced_games', monotonic: true }, // matches where a player used 5 or more activities
-    { key: 'skill_master_games', monotonic: true }, // matches where a player reached 6 skills
-    { key: 'long_games', monotonic: true }, // finished 16-month matches
-    { key: 'full_table_games', monotonic: true }, // finished 4-player matches
-    { key: 'human_wins', monotonic: true }, // matches whose sole top score belongs to a human
-    { key: 'months_played', monotonic: true }, // months across finished matches
-    { key: 'short_games', monotonic: true }, // finished 8-month matches
-    { key: 'normal_games', monotonic: true }, // finished 12-month matches
-    { key: 'ai_games', monotonic: true } // finished matches that included an AI player
+    { key: 'games_finished', monotonic: true },
+    { key: 'tutorials_finished', monotonic: true },
+    { key: 'best_score', monotonic: true },
+    { key: 'best_happiness', monotonic: true },
+    { key: 'best_skills', monotonic: true },
+    { key: 'best_money', monotonic: true },
+    { key: 'best_activities', monotonic: true },
+    { key: 'balanced_games', monotonic: true },
+    { key: 'skill_master_games', monotonic: true },
+    { key: 'long_games', monotonic: true },
+    { key: 'full_table_games', monotonic: true },
+    { key: 'human_wins', monotonic: true },
+    { key: 'months_played', monotonic: true },
+    { key: 'short_games', monotonic: true },
+    { key: 'normal_games', monotonic: true },
+    { key: 'ai_games', monotonic: true }
   ];
 
-  // Stable achievement ids. Conditions read the stats above.
   const LOGROS = [
-    { id: 'first_game', met: function (s) { return s.games_finished >= 1; } }, // finish a match outside the tutorial
-    { id: 'tutorial_done', met: function (s) { return s.tutorials_finished >= 1; } }, // finish the tutorial steps
-    { id: 'score_20', met: function (s) { return s.best_score >= 20; } }, // final score of 20
-    { id: 'score_40', met: function (s) { return s.best_score >= 40; } }, // final score of 40
-    { id: 'score_70', met: function (s) { return s.best_score >= 70; } }, // final score of 70
-    { id: 'balanced_life', met: function (s) { return s.balanced_games >= 1; } }, // use 5 or more activities in one match
-    { id: 'skill_master', met: function (s) { return s.skill_master_games >= 1; } }, // end a match with 6 skills
-    { id: 'long_year', met: function (s) { return s.long_games >= 1; } }, // finish 16 months
-    { id: 'full_table', met: function (s) { return s.full_table_games >= 1; } }, // finish with 4 players
-    { id: 'human_win', met: function (s) { return s.human_wins >= 1; } }, // a human has the sole highest score
-    { id: 'ten_games', met: function (s) { return s.games_finished >= 10; } }, // finish 10 matches
-    { id: 'all_activities', met: function (s) { return s.best_activities >= 8; } } // use all 8 activities in one match
+    { id: 'first_game', met: function (s) { return s.games_finished >= 1; } },
+    { id: 'tutorial_done', met: function (s) { return s.tutorials_finished >= 1; } },
+    { id: 'score_20', met: function (s) { return s.best_score >= 20; } },
+    { id: 'score_40', met: function (s) { return s.best_score >= 40; } },
+    { id: 'score_70', met: function (s) { return s.best_score >= 70; } },
+    { id: 'balanced_life', met: function (s) { return s.balanced_games >= 1; } },
+    { id: 'skill_master', met: function (s) { return s.skill_master_games >= 1; } },
+    { id: 'long_year', met: function (s) { return s.long_games >= 1; } },
+    { id: 'full_table', met: function (s) { return s.full_table_games >= 1; } },
+    { id: 'human_win', met: function (s) { return s.human_wins >= 1; } },
+    { id: 'ten_games', met: function (s) { return s.games_finished >= 10; } },
+    { id: 'all_activities', met: function (s) { return s.best_activities >= 8; } }
   ];
 
   let memory = null;

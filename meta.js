@@ -1,10 +1,6 @@
-// meta.v1 progress record. Same helper in every app.
 (function (root) {
   const gate = { last: 0, pending: null, timer: null, bound: false };
 
-  // Project status, set by hand and bumped with the version. Never computed from play.
-  // fase 1-6: Idea, Definición, Diseño, Construcción, Validación, Lanzamiento y mantenimiento.
-  // fase_estado 0-4: pendiente, en curso, bloqueada, en revisión, completada.
   const PROYECTO = {
     objetivo: 'Juego de mesa digital para 2 a 4 jugadores, humanos o IA, sobre repartir tiempo y energía para ganar felicidad.',
     fase: 6,
@@ -18,7 +14,6 @@
     return typeof n === 'number' && Number.isInteger(n) && n >= lo && n <= hi;
   }
 
-  // Clean copy of a proyecto block, or null when any field is missing or out of range.
   function metaProyecto(p) {
     try {
       if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
@@ -31,12 +26,10 @@
     }
   }
 
-  // Tests only: swap the block the writer uses (null restores PROYECTO).
   function metaSetProyecto(p) {
     proyectoSource = p === null ? PROYECTO : p;
   }
 
-  // Adds the current proyecto block to a record being written, when it is valid.
   function withProyecto(record) {
     const p = metaProyecto(proyectoSource);
     if (p) record.proyecto = p;
