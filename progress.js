@@ -1,27 +1,30 @@
 (function (root) {
   const SLUG = 'vidabalance-v2';
-  const APP_VERSION = '1.0.6';
+  const APP_VERSION = '1.0.7';
   const SAVE_KEY = 'vidabalance.save';
   const META_KEY = 'meta.v1.' + SLUG;
 
-  const STATS = [
-    { key: 'games_finished', monotonic: true },
-    { key: 'tutorials_finished', monotonic: true },
-    { key: 'best_score', monotonic: true },
-    { key: 'best_happiness', monotonic: true },
-    { key: 'best_skills', monotonic: true },
-    { key: 'best_money', monotonic: true },
-    { key: 'best_activities', monotonic: true },
-    { key: 'balanced_games', monotonic: true },
-    { key: 'skill_master_games', monotonic: true },
-    { key: 'long_games', monotonic: true },
-    { key: 'full_table_games', monotonic: true },
-    { key: 'human_wins', monotonic: true },
-    { key: 'months_played', monotonic: true },
-    { key: 'short_games', monotonic: true },
-    { key: 'normal_games', monotonic: true },
-    { key: 'ai_games', monotonic: true }
-  ];
+  const TIPO_STAT = root.TIPO_STAT || require('./meta.js').TIPO_STAT;
+
+  const STATS = Object.freeze({
+    games_finished: { tipo: TIPO_STAT.TOTAL_ACUMULADO, unidad: 'partidas terminadas' },
+    tutorials_finished: { tipo: TIPO_STAT.TOTAL_ACUMULADO, unidad: 'tutoriales terminados' },
+    best_score: { tipo: TIPO_STAT.MEJOR_MARCA, unidad: 'puntos en una partida' },
+    best_happiness: { tipo: TIPO_STAT.MEJOR_MARCA, unidad: 'puntos de felicidad en una partida' },
+    best_skills: { tipo: TIPO_STAT.MEJOR_MARCA, unidad: 'puntos de habilidades en una partida' },
+    best_money: { tipo: TIPO_STAT.MEJOR_MARCA, unidad: 'dinero en una partida' },
+    best_activities: { tipo: TIPO_STAT.MEJOR_MARCA, unidad: 'actividades distintas en una partida' },
+    balanced_games: { tipo: TIPO_STAT.TOTAL_ACUMULADO, unidad: 'partidas con vida equilibrada' },
+    skill_master_games: { tipo: TIPO_STAT.TOTAL_ACUMULADO, unidad: 'partidas como maestro de habilidades' },
+    long_games: { tipo: TIPO_STAT.TOTAL_ACUMULADO, unidad: 'partidas largas' },
+    full_table_games: { tipo: TIPO_STAT.TOTAL_ACUMULADO, unidad: 'partidas con la mesa llena' },
+    human_wins: { tipo: TIPO_STAT.TOTAL_ACUMULADO, unidad: 'partidas ganadas por un humano' },
+    months_played: { tipo: TIPO_STAT.TOTAL_ACUMULADO, unidad: 'meses jugados' },
+    short_games: { tipo: TIPO_STAT.TOTAL_ACUMULADO, unidad: 'partidas cortas' },
+    normal_games: { tipo: TIPO_STAT.TOTAL_ACUMULADO, unidad: 'partidas normales' },
+    ai_games: { tipo: TIPO_STAT.TOTAL_ACUMULADO, unidad: 'partidas con IA' }
+  });
+  const STAT_KEYS = Object.keys(STATS);
 
   const LOGROS = [
     { id: 'first_game', met: function (s) { return s.games_finished >= 1; } },
@@ -57,15 +60,15 @@
 
   function emptyStats() {
     const s = {};
-    for (let i = 0; i < STATS.length; i++) s[STATS[i].key] = 0;
+    for (let i = 0; i < STAT_KEYS.length; i++) s[STAT_KEYS[i]] = 0;
     return s;
   }
 
   function copyStats(src) {
     const s = emptyStats();
     if (!src || typeof src !== 'object') return s;
-    for (let i = 0; i < STATS.length; i++) {
-      const key = STATS[i].key;
+    for (let i = 0; i < STAT_KEYS.length; i++) {
+      const key = STAT_KEYS[i];
       if (typeof src[key] === 'number' && Number.isFinite(src[key]) && src[key] >= 0) s[key] = src[key];
     }
     return s;

@@ -6,7 +6,7 @@ const progress = require('../progress.js');
 const SAVE_KEY = progress.SAVE_KEY;
 const META_KEY = progress.META_KEY;
 const CORRUPT_KEY = META_KEY + '.corrupt';
-const VERSION = '1.0.6';
+const VERSION = '1.0.7';
 
 const handlers = {};
 globalThis.addEventListener = (type, fn) => { handlers[type] = fn; };
@@ -79,7 +79,7 @@ test('old save without the meta key produces a record', () => {
   assert.equal(rec.slug, 'vidabalance-v2');
   assert.equal(rec.version, VERSION);
   assert.equal(iso(rec.updatedAt), true);
-  assert.deepEqual(Object.keys(rec.stats), progress.STATS.map((item) => item.key));
+  assert.deepEqual(Object.keys(rec.stats), Object.keys(progress.STATS));
   assert.equal(rec.stats.games_finished, 10);
   assert.equal(rec.stats.best_score, 40);
   assert.equal('legacy_note' in rec.stats, false);
@@ -173,7 +173,7 @@ test('helper keeps at most 20 declared stats in declared order', () => {
   const stats = { nope: 7, games_finished: 3 };
   for (let i = 0; i < 25; i++) {
     const key = 'stat_' + String(i).padStart(2, '0');
-    declared.push({ key: key, monotonic: false });
+    declared.push({ key: key, tipo: 'valor_actual' });
     stats[key] = i + 1;
   }
   stats.stat_03 = Infinity;
@@ -192,9 +192,9 @@ test('helper keeps at most 20 declared stats in declared order', () => {
 
 test('monotonic stats keep the greater value and omitted keys stay', () => {
   const declared = [
-    { key: 'games_finished', monotonic: true },
-    { key: 'best_score', monotonic: true },
-    { key: 'last_level', monotonic: false }
+    { key: 'games_finished', tipo: 'total_acumulado' },
+    { key: 'best_score', tipo: 'total_acumulado' },
+    { key: 'last_level', tipo: 'valor_actual' }
   ];
   metaUpdate('vidabalance-v2', VERSION, {
     stats: { games_finished: 5, best_score: 10, last_level: 3, extra: 9 },
@@ -393,13 +393,13 @@ test('metaUpdate keeps hitos and posts only to a parent frame', () => {
   const first = metaUpdate('vidabalance-v2', VERSION, {
     stats: { games_finished: 1 },
     logros: ['first_game'],
-    declared: [{ key: 'games_finished', monotonic: true }]
+    declared: [{ key: 'games_finished', tipo: 'total_acumulado' }]
   });
   metaReset();
   const again = metaUpdate('vidabalance-v2', VERSION, {
     stats: { games_finished: 2 },
     logros: ['first_game', 'ten_games'],
-    declared: [{ key: 'games_finished', monotonic: true }]
+    declared: [{ key: 'games_finished', tipo: 'total_acumulado' }]
   });
   assert.equal(again.hitos.first_game, first.hitos.first_game);
   assert.equal(again.hitos.ten_games, again.updatedAt);
@@ -411,7 +411,7 @@ test('metaUpdate keeps hitos and posts only to a parent frame', () => {
   metaUpdate('vidabalance-v2', VERSION, {
     stats: { games_finished: 3 },
     logros: ['first_game'],
-    declared: [{ key: 'games_finished', monotonic: true }]
+    declared: [{ key: 'games_finished', tipo: 'total_acumulado' }]
   });
   assert.equal(messages.length, 0);
 
@@ -422,7 +422,7 @@ test('metaUpdate keeps hitos and posts only to a parent frame', () => {
   const posted = metaUpdate('vidabalance-v2', VERSION, {
     stats: { games_finished: 4 },
     logros: ['first_game'],
-    declared: [{ key: 'games_finished', monotonic: true }]
+    declared: [{ key: 'games_finished', tipo: 'total_acumulado' }]
   });
   assert.equal(messages.length, 1);
   assert.equal(messages[0].origin, 'http://127.0.0.1:8765');
@@ -433,7 +433,7 @@ test('metaUpdate keeps hitos and posts only to a parent frame', () => {
 });
 
 test('app version is plain semver', () => {
-  assert.equal(progress.APP_VERSION, '1.0.6');
-  assert.equal(progress.STATS.length <= 20, true);
-  assert.equal(progress.STATS.every((item) => item.monotonic === true), true);
+  assert.equal(progress.APP_VERSION, '1.0.7');
+  assert.equal(Object.keys(progress.STATS).length <= 20, true);
+  assert.equal(Object.keys(progress.STATS).every((key) => progress.STATS[key].tipo !== 'valor_actual'), true);
 });

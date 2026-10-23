@@ -1,10 +1,14 @@
 (function (root) {
   const gate = { last: 0, pending: null, timer: null, bound: false };
 
+  var FASE = Object.freeze({ IDEA: 1, DEFINICION: 2, DISENO: 3, CONSTRUCCION: 4, VALIDACION: 5, LANZAMIENTO_Y_MANTENIMIENTO: 6, DESCARTADA: 7 });
+  var ESTADO_FASE = Object.freeze({ PENDIENTE: 0, EN_CURSO: 1, BLOQUEADA: 2, EN_REVISION: 3, COMPLETADA: 4 });
+  var TIPO_STAT = Object.freeze({ TOTAL_ACUMULADO: 'total_acumulado', MEJOR_MARCA: 'mejor_marca', VALOR_ACTUAL: 'valor_actual' });
+
   const PROYECTO = {
     objetivo: 'En algún momento pensé que era una buena idea, pero tal vez te sirva de inspiración.',
-    fase: 7,
-    fase_estado: 4,
+    fase: FASE.DESCARTADA,
+    fase_estado: ESTADO_FASE.COMPLETADA,
     fases_completadas: 2
   };
 
@@ -14,12 +18,26 @@
     return typeof n === 'number' && Number.isInteger(n) && n >= lo && n <= hi;
   }
 
+  function enumValido(enumeracion, valor) {
+    return Object.values(enumeracion).indexOf(valor) !== -1;
+  }
+
+  function statConservaMaximo(tipo) {
+    return tipo === TIPO_STAT.TOTAL_ACUMULADO || tipo === TIPO_STAT.MEJOR_MARCA;
+  }
+
+  function statsDeclarados(stats) {
+    if (Array.isArray(stats)) return stats;
+    if (!stats || typeof stats !== 'object') return [];
+    return Object.keys(stats).map(function (key) { return { key: key, tipo: stats[key] && stats[key].tipo }; });
+  }
+
   function metaProyecto(p) {
     try {
       if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
       const o = p.objetivo;
       if (typeof o !== 'string' || !o.trim() || Array.from(o).length > 140) return null;
-      if (!proyectoInt(p.fase, 1, 7) || !proyectoInt(p.fase_estado, 0, 4) || !proyectoInt(p.fases_completadas, 0, 6)) return null;
+      if (!enumValido(FASE, p.fase) || !enumValido(ESTADO_FASE, p.fase_estado) || !proyectoInt(p.fases_completadas, 0, FASE.LANZAMIENTO_Y_MANTENIMIENTO)) return null;
       return { objetivo: o, fase: p.fase, fase_estado: p.fase_estado, fases_completadas: p.fases_completadas };
     } catch (e) {
       return null;
@@ -67,8 +85,8 @@
 
   function declaredList(payload) {
     const src = payload.stats && typeof payload.stats === 'object' && !Array.isArray(payload.stats) ? payload.stats : {};
-    if (Array.isArray(payload.declared)) return payload.declared;
-    return Object.keys(src).map(function (key) { return { key: key, monotonic: false }; });
+    if (payload.declared && typeof payload.declared === 'object') return statsDeclarados(payload.declared);
+    return Object.keys(src).map(function (key) { return { key: key, tipo: TIPO_STAT.VALOR_ACTUAL }; });
   }
 
   function buildRecord(slug, version, payload, prev) {
@@ -84,14 +102,14 @@
       if (!key || seen.has(key)) continue;
       seen.add(key);
       kept++;
-      const monotonic = !!(item && typeof item === 'object' && item.monotonic);
+      const conservaMaximo = !!(item && typeof item === 'object' && statConservaMaximo(item.tipo));
       const incoming = src[key];
       const hasNew = typeof incoming === 'number' && Number.isFinite(incoming);
       const old = prevStats[key];
       const hasOld = typeof old === 'number' && Number.isFinite(old);
       if (!hasNew && !hasOld) continue;
       if (!hasNew) stats[key] = old;
-      else if (monotonic && hasOld) stats[key] = incoming > old ? incoming : old;
+      else if (conservaMaximo && hasOld) stats[key] = incoming > old ? incoming : old;
       else stats[key] = incoming;
     }
 
@@ -259,13 +277,25 @@
 
   root.metaUpdate = metaUpdate;
   root.metaReset = metaReset;
+  root.FASE = FASE;
+  root.ESTADO_FASE = ESTADO_FASE;
+  root.TIPO_STAT = TIPO_STAT;
+  root.enumValido = enumValido;
+  root.statConservaMaximo = statConservaMaximo;
+  root.statsDeclarados = statsDeclarados;
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       metaUpdate: metaUpdate,
       metaReset: metaReset,
       metaProyecto: metaProyecto,
       metaSetProyecto: metaSetProyecto,
-      PROYECTO: PROYECTO
+      PROYECTO: PROYECTO,
+      FASE: FASE,
+      ESTADO_FASE: ESTADO_FASE,
+      TIPO_STAT: TIPO_STAT,
+      enumValido: enumValido,
+      statConservaMaximo: statConservaMaximo,
+      statsDeclarados: statsDeclarados
     };
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);
