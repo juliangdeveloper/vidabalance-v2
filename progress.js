@@ -1,31 +1,31 @@
-// Match progress for vidabalance-v2. meta.v1 is filled from this save.
+// Match progress for vidabalance-v2. The meta record is updated from play; vidabalance.save is only read.
 (function (root) {
   const SLUG = 'vidabalance-v2';
-  const APP_VERSION = '1.0.1';
+  const APP_VERSION = '1.0.2';
   const SAVE_KEY = 'vidabalance.save';
   const META_KEY = 'meta.v1.' + SLUG;
 
-  // Flat numeric stats written into meta.v1. Max 20.
-  const STAT_KEYS = [
-    'games_finished', // finished matches, tutorial excluded
-    'tutorials_finished', // tutorial step sequences completed
-    'best_score', // highest final score shown on the end screen
-    'best_happiness', // highest base happiness
-    'best_skills', // highest skill tokens
-    'best_money', // highest money
-    'best_activities', // most distinct activities in one match
-    'balanced_games', // matches where a player used 5 or more activities
-    'skill_master_games', // matches where a player reached 6 skills
-    'long_games', // finished 16-month matches
-    'full_table_games', // finished 4-player matches
-    'human_wins', // matches whose sole top score belongs to a human
-    'months_played', // months across finished matches, tutorial included
-    'short_games', // finished 8-month matches
-    'normal_games', // finished 12-month matches
-    'ai_games' // finished matches that included an AI player
+  // Declared stats, in write order. At most 20. Monotonic keys never decrease.
+  const STATS = [
+    { key: 'games_finished', monotonic: true }, // finished matches, tutorial excluded
+    { key: 'tutorials_finished', monotonic: true }, // tutorial step sequences completed
+    { key: 'best_score', monotonic: true }, // highest final score on the end screen
+    { key: 'best_happiness', monotonic: true }, // highest base happiness
+    { key: 'best_skills', monotonic: true }, // highest skill tokens
+    { key: 'best_money', monotonic: true }, // highest money
+    { key: 'best_activities', monotonic: true }, // most distinct activities in one match
+    { key: 'balanced_games', monotonic: true }, // matches where a player used 5 or more activities
+    { key: 'skill_master_games', monotonic: true }, // matches where a player reached 6 skills
+    { key: 'long_games', monotonic: true }, // finished 16-month matches
+    { key: 'full_table_games', monotonic: true }, // finished 4-player matches
+    { key: 'human_wins', monotonic: true }, // matches whose sole top score belongs to a human
+    { key: 'months_played', monotonic: true }, // months across finished matches
+    { key: 'short_games', monotonic: true }, // finished 8-month matches
+    { key: 'normal_games', monotonic: true }, // finished 12-month matches
+    { key: 'ai_games', monotonic: true } // finished matches that included an AI player
   ];
 
-  // Stable achievement ids. Conditions read the save above.
+  // Stable achievement ids. Conditions read the stats above.
   const LOGROS = [
     { id: 'first_game', met: function (s) { return s.games_finished >= 1; } }, // finish a match outside the tutorial
     { id: 'tutorial_done', met: function (s) { return s.tutorials_finished >= 1; } }, // finish the tutorial steps
@@ -41,139 +41,138 @@
     { id: 'all_activities', met: function (s) { return s.best_activities >= 8; } } // use all 8 activities in one match
   ];
 
-  let metaTimer = null;
-  let metaLast = 0;
-  let pendingVersion = APP_VERSION;
+  let memory = null;
+  let tutorialPending = false;
+
+  function isDemo() {
+    try {
+      const search = root.location && typeof root.location.search === 'string' ? root.location.search : '';
+      return /(?:\?|&)(?:demo|preview)=1(?:&|$)/.test(search);
+    } catch (e) {
+      return false;
+    }
+  }
 
   function num(v) {
     if (typeof v !== 'number' || !Number.isFinite(v) || v < 0) return 0;
     return v;
   }
 
-  function emptySave() {
+  function emptyStats() {
     const s = {};
-    for (let i = 0; i < STAT_KEYS.length; i++) s[STAT_KEYS[i]] = 0;
+    for (let i = 0; i < STATS.length; i++) s[STATS[i].key] = 0;
+    return s;
+  }
+
+  function copyStats(src) {
+    const s = emptyStats();
+    if (!src || typeof src !== 'object') return s;
+    for (let i = 0; i < STATS.length; i++) {
+      const key = STATS[i].key;
+      if (typeof src[key] === 'number' && Number.isFinite(src[key]) && src[key] >= 0) s[key] = src[key];
+    }
     return s;
   }
 
   function readSave() {
     try {
       const raw = root.localStorage.getItem(SAVE_KEY);
-      if (!raw) return emptySave();
+      if (!raw) return emptyStats();
       const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return emptySave();
-      const s = emptySave();
-      for (let i = 0; i < STAT_KEYS.length; i++) {
-        const k = STAT_KEYS[i];
-        if (typeof parsed[k] === 'number' && Number.isFinite(parsed[k]) && parsed[k] >= 0) s[k] = parsed[k];
-      }
-      return s;
+      return copyStats(parsed);
     } catch (e) {
-      return emptySave();
+      return emptyStats();
     }
   }
 
-  function writeSave(save) {
+  function readMetaStats() {
     try {
-      let base = {};
-      const raw = root.localStorage.getItem(SAVE_KEY);
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) base = parsed;
-        } catch (e) {
-          base = {};
-        }
-      }
-      const next = {};
-      const baseKeys = Object.keys(base);
-      for (let i = 0; i < baseKeys.length; i++) next[baseKeys[i]] = base[baseKeys[i]];
-      for (let i = 0; i < STAT_KEYS.length; i++) next[STAT_KEYS[i]] = save[STAT_KEYS[i]];
-      root.localStorage.setItem(SAVE_KEY, JSON.stringify(next));
-    } catch (e) {}
-  }
-
-  function statsFromSave(save) {
-    const stats = {};
-    for (let i = 0; i < STAT_KEYS.length; i++) {
-      const k = STAT_KEYS[i];
-      const n = save[k];
-      if (typeof n === 'number' && Number.isFinite(n)) stats[k] = n;
+      const raw = root.localStorage.getItem(META_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || parsed.v !== 1 || parsed.slug !== SLUG) return null;
+      return copyStats(parsed.stats);
+    } catch (e) {
+      return null;
     }
-    return stats;
   }
 
-  function logrosFromSave(save) {
+  function baseStats() {
+    if (memory) return copyStats(memory);
+    const fromMeta = readMetaStats();
+    if (fromMeta) return fromMeta;
+    return readSave();
+  }
+
+  function logrosFromStats(stats) {
     const ids = [];
     for (let i = 0; i < LOGROS.length; i++) {
       try {
-        if (LOGROS[i].met(save)) ids.push(LOGROS[i].id);
+        if (LOGROS[i].met(stats)) ids.push(LOGROS[i].id);
       } catch (e) {}
     }
     return ids;
   }
 
-  function callMetaUpdate(version, save) {
+  function callMetaUpdate(version, stats) {
     let fn = root.metaUpdate;
     if (typeof fn !== 'function') {
       fn = require('./meta.js').metaUpdate;
       root.metaUpdate = fn;
     }
-    return fn(SLUG, version, { stats: statsFromSave(save), logros: logrosFromSave(save) });
+    memory = copyStats(stats);
+    return fn(SLUG, version || APP_VERSION, {
+      stats: memory,
+      logros: logrosFromStats(memory),
+      declared: STATS
+    });
   }
 
-  function flushMeta() {
+  function recordValid(raw) {
     try {
-      metaTimer = null;
-      metaLast = Date.now();
-      callMetaUpdate(pendingVersion, readSave());
-    } catch (e) {}
-  }
-
-  // At most one meta write per second. A later call in that window still lands.
-  function scheduleMetaUpdate(version) {
-    try {
-      if (typeof version === 'string' && version) pendingVersion = version;
-      if (metaTimer) return;
-      const wait = metaLast ? Math.max(0, 1000 - (Date.now() - metaLast)) : 0;
-      if (wait === 0) flushMeta();
-      else metaTimer = setTimeout(flushMeta, wait);
-    } catch (e) {}
+      const parsed = JSON.parse(raw);
+      return !!parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.v === 1 && parsed.slug === SLUG;
+    } catch (e) {
+      return false;
+    }
   }
 
   function backfillMeta(version) {
     try {
-      const existing = root.localStorage.getItem(META_KEY);
-      if (existing !== null) return;
-      const ver = typeof version === 'string' && version ? version : APP_VERSION;
-      callMetaUpdate(ver, readSave());
-      metaLast = Date.now();
+      if (isDemo()) return;
+      const raw = root.localStorage.getItem(META_KEY);
+      if (raw !== null && recordValid(raw)) {
+        memory = readMetaStats();
+        return;
+      }
+      callMetaUpdate(version || APP_VERSION, readSave());
     } catch (e) {}
   }
 
-  function recordTutorialComplete(version) {
-    try {
-      const save = readSave();
-      save.tutorials_finished += 1;
-      writeSave(save);
-      scheduleMetaUpdate(version);
-    } catch (e) {}
+  function noteTutorialComplete() {
+    if (isDemo()) return;
+    tutorialPending = true;
   }
 
   function recordFinishedMatch(version, match) {
     try {
-      const save = readSave();
-      const tutorial = !!(match && match.tutorial);
+      if (isDemo()) return;
+      if (match && match.tutorial) return;
+      const stats = baseStats();
       const months = num(match && match.months);
       const playerCount = num(match && match.playerCount);
       const results = match && Array.isArray(match.results) ? match.results : [];
-      if (!tutorial) save.games_finished += 1;
-      save.months_played += months;
-      if (!tutorial && months === 8) save.short_games += 1;
-      if (!tutorial && months === 12) save.normal_games += 1;
-      if (!tutorial && months === 16) save.long_games += 1;
-      if (!tutorial && playerCount >= 4) save.full_table_games += 1;
-      if (!tutorial && match && match.ai) save.ai_games += 1;
+      stats.games_finished += 1;
+      stats.months_played += months;
+      if (months === 8) stats.short_games += 1;
+      if (months === 12) stats.normal_games += 1;
+      if (months === 16) stats.long_games += 1;
+      if (playerCount >= 4) stats.full_table_games += 1;
+      if (match && match.ai) stats.ai_games += 1;
+      if (tutorialPending) {
+        stats.tutorials_finished += 1;
+        tutorialPending = false;
+      }
 
       let top = null;
       let topCount = 0;
@@ -187,11 +186,11 @@
         const skills = num(r.skills);
         const money = num(r.money);
         const activities = num(r.activities);
-        if (score > save.best_score) save.best_score = score;
-        if (happiness > save.best_happiness) save.best_happiness = happiness;
-        if (skills > save.best_skills) save.best_skills = skills;
-        if (money > save.best_money) save.best_money = money;
-        if (activities > save.best_activities) save.best_activities = activities;
+        if (score > stats.best_score) stats.best_score = score;
+        if (happiness > stats.best_happiness) stats.best_happiness = happiness;
+        if (skills > stats.best_skills) stats.best_skills = skills;
+        if (money > stats.best_money) stats.best_money = money;
+        if (activities > stats.best_activities) stats.best_activities = activities;
         if (activities >= 5) balanced = true;
         if (skills >= 6) skillMaster = true;
         if (top === null || score > top) {
@@ -200,17 +199,21 @@
           humanTop = r.type === 'human';
         } else if (score === top) topCount += 1;
       }
-      if (balanced) save.balanced_games += 1;
-      if (skillMaster) save.skill_master_games += 1;
-      if (!tutorial && top !== null && topCount === 1 && humanTop) save.human_wins += 1;
-      writeSave(save);
-      scheduleMetaUpdate(version);
+      if (balanced) stats.balanced_games += 1;
+      if (skillMaster) stats.skill_master_games += 1;
+      if (top !== null && topCount === 1 && humanTop) stats.human_wins += 1;
+      callMetaUpdate(version || APP_VERSION, stats);
     } catch (e) {}
+  }
+
+  function resetProgressState() {
+    memory = null;
+    tutorialPending = false;
   }
 
   root.APP_VERSION = APP_VERSION;
   root.backfillMeta = backfillMeta;
-  root.recordTutorialComplete = recordTutorialComplete;
+  root.noteTutorialComplete = noteTutorialComplete;
   root.recordFinishedMatch = recordFinishedMatch;
 
   if (typeof module !== 'undefined' && module.exports) {
@@ -219,14 +222,14 @@
       APP_VERSION: APP_VERSION,
       SAVE_KEY: SAVE_KEY,
       META_KEY: META_KEY,
-      STAT_KEYS: STAT_KEYS,
+      STATS: STATS,
       LOGROS: LOGROS,
       readSave: readSave,
       backfillMeta: backfillMeta,
-      recordTutorialComplete: recordTutorialComplete,
+      noteTutorialComplete: noteTutorialComplete,
       recordFinishedMatch: recordFinishedMatch,
-      statsFromSave: statsFromSave,
-      logrosFromSave: logrosFromSave
+      logrosFromStats: logrosFromStats,
+      resetProgressState: resetProgressState
     };
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

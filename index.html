@@ -261,8 +261,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 <div class="tut-hl" id="tutHl"></div>
 <div class="tut-box" id="tutBox"><p id="tutTx"></p><button class="btn btn-p btn-sm" id="tutBtn" onclick="tutNext()">Siguiente</button></div>
 
-<script src="meta.js?v=1.0.1"></script>
-<script src="progress.js?v=1.0.1"></script>
+<script src="meta.js?v=1.0.2"></script>
+<script src="progress.js?v=1.0.2"></script>
 <script>
 const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre','Enero+1','Febrero+1','Marzo+1','Abril+1'];
 
@@ -769,7 +769,7 @@ function showTut(){
   bg.classList.add('show');box.classList.add('show');
   if(s.h){const el=document.querySelector(s.h);if(el){const r=el.getBoundingClientRect();hl.style.top=r.top-3+'px';hl.style.left=r.left-3+'px';hl.style.width=r.width+6+'px';hl.style.height=r.height+6+'px';hl.classList.add('show')}}else hl.classList.remove('show');
 }
-function tutNext(){tutS++;if(tutS===TUT.length){try{if(typeof recordTutorialComplete==='function')recordTutorialComplete(APP_VERSION)}catch(e){}}showTut()}
+function tutNext(){tutS++;if(tutS===TUT.length){try{if(typeof noteTutorialComplete==='function')noteTutorialComplete()}catch(e){}}showTut()}
 
 // ===================== UI =====================
 function showS(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
