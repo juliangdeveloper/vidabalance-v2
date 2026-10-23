@@ -2,10 +2,10 @@
   const gate = { last: 0, pending: null, timer: null, bound: false };
 
   const PROYECTO = {
-    objetivo: 'Juego de mesa digital para 2 a 4 jugadores, humanos o IA, sobre repartir tiempo y energía para ganar felicidad.',
-    fase: 6,
-    fase_estado: 1,
-    fases_completadas: 5
+    objetivo: 'En algún momento pensé que era una buena idea, pero tal vez te sirva de inspiración.',
+    fase: 7,
+    fase_estado: 4,
+    fases_completadas: 2
   };
 
   let proyectoSource = PROYECTO;
@@ -19,7 +19,7 @@
       if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
       const o = p.objetivo;
       if (typeof o !== 'string' || !o.trim() || Array.from(o).length > 140) return null;
-      if (!proyectoInt(p.fase, 1, 6) || !proyectoInt(p.fase_estado, 0, 4) || !proyectoInt(p.fases_completadas, 0, 6)) return null;
+      if (!proyectoInt(p.fase, 1, 7) || !proyectoInt(p.fase_estado, 0, 4) || !proyectoInt(p.fases_completadas, 0, 6)) return null;
       return { objetivo: o, fase: p.fase, fase_estado: p.fase_estado, fases_completadas: p.fases_completadas };
     } catch (e) {
       return null;
