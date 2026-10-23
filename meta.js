@@ -166,24 +166,50 @@
     return record;
   }
 
+  function flushPending() {
+    if (isDemo() || !gate.pending) return null;
+    const job = gate.pending;
+    gate.pending = null;
+    if (gate.timer) {
+      try { clearTimeout(gate.timer); } catch (e) {}
+      gate.timer = null;
+    }
+    const record = writeNow(job);
+    gate.last = Date.now();
+    return record;
+  }
+
   function onHide() {
+    try { flushPending(); } catch (e) {}
+  }
+
+  function onVisibility() {
     try {
-      if (isDemo() || !gate.pending) return;
-      if (waitLeft() > 0) return;
-      commit();
+      const doc = root.document;
+      if (!doc || doc.visibilityState !== 'hidden') return;
+      flushPending();
     } catch (e) {}
   }
 
   function bind() {
-    if (gate.bound) return;
-    let target = null;
-    const w = root.window;
-    if (w && typeof w.addEventListener === 'function') target = w;
-    else if (typeof root.addEventListener === 'function') target = root;
-    if (!target) return;
-    target.addEventListener('pagehide', onHide);
-    target.addEventListener('beforeunload', onHide);
-    gate.bound = true;
+    if (!gate.bound) {
+      let target = null;
+      const w = root.window;
+      if (w && typeof w.addEventListener === 'function') target = w;
+      else if (typeof root.addEventListener === 'function') target = root;
+      if (target) {
+        target.addEventListener('pagehide', onHide);
+        target.addEventListener('beforeunload', onHide);
+        gate.bound = true;
+      }
+    }
+    if (!gate.visBound) {
+      const doc = root.document;
+      if (doc && typeof doc.addEventListener === 'function') {
+        doc.addEventListener('visibilitychange', onVisibility);
+        gate.visBound = true;
+      }
+    }
   }
 
   function metaUpdate(slug, version, payload) {

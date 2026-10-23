@@ -1,7 +1,7 @@
 // Match progress for vidabalance-v2. The meta record is updated from play; vidabalance.save is only read.
 (function (root) {
   const SLUG = 'vidabalance-v2';
-  const APP_VERSION = '1.0.2';
+  const APP_VERSION = '1.0.3';
   const SAVE_KEY = 'vidabalance.save';
   const META_KEY = 'meta.v1.' + SLUG;
 

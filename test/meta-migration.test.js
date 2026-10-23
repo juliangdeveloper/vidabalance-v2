@@ -6,10 +6,14 @@ const progress = require('../progress.js');
 const SAVE_KEY = progress.SAVE_KEY;
 const META_KEY = progress.META_KEY;
 const CORRUPT_KEY = META_KEY + '.corrupt';
-const VERSION = '1.0.2';
+const VERSION = '1.0.3';
 
 const handlers = {};
 globalThis.addEventListener = (type, fn) => { handlers[type] = fn; };
+globalThis.document = {
+  visibilityState: 'visible',
+  addEventListener(type, fn) { handlers[type] = fn; }
+};
 
 function storage() {
   const map = new Map();
@@ -37,6 +41,7 @@ test.beforeEach(() => {
   globalThis.localStorage = storage();
   globalThis.location = { search: '', origin: 'http://127.0.0.1:8765' };
   globalThis.window = topWindow();
+  if (globalThis.document) globalThis.document.visibilityState = 'visible';
 });
 
 test('old save without the meta key produces a record', () => {
@@ -209,7 +214,7 @@ test('monotonic stats keep the greater value and omitted keys stay', () => {
   assert.equal(rec.hitos.first_game !== undefined, true);
 });
 
-test('at most one write per second including backfill and flush', () => {
+test('normal writes stay at one per second and a hide flushes a pending change', () => {
   let now = 10000;
   const prevNow = Date.now;
   const prevSet = global.setTimeout;
@@ -265,21 +270,41 @@ test('at most one write per second including backfill and flush', () => {
     assert.deepEqual(writes, [META_KEY]);
     assert.equal(posts.length, 1);
 
-    handlers.pagehide();
-    handlers.beforeunload();
+    globalThis.document.visibilityState = 'visible';
+    handlers.visibilitychange();
     assert.deepEqual(writes, [META_KEY]);
     assert.equal(posts.length, 1);
 
-    advance(1000);
-    assert.deepEqual(writes, [META_KEY, META_KEY]);
-    assert.equal(posts.length, 2);
-    const rec = JSON.parse(globalThis.localStorage.getItem(META_KEY));
-    assert.equal(rec.stats.games_finished, 1);
-    assert.equal(rec.stats.short_games, 1);
-
     handlers.pagehide();
     assert.deepEqual(writes, [META_KEY, META_KEY]);
     assert.equal(posts.length, 2);
+    let rec = JSON.parse(globalThis.localStorage.getItem(META_KEY));
+    assert.equal(rec.stats.games_finished, 1);
+    assert.equal(rec.stats.short_games, 1);
+
+    progress.recordFinishedMatch(VERSION, {
+      months: 12,
+      playerCount: 2,
+      ai: false,
+      results: [{ type: 'human', score: 20, happiness: 16, skills: 1, money: 4, activities: 4 }]
+    });
+    assert.deepEqual(writes, [META_KEY, META_KEY]);
+    assert.equal(posts.length, 2);
+
+    globalThis.document.visibilityState = 'hidden';
+    handlers.visibilitychange();
+    assert.deepEqual(writes, [META_KEY, META_KEY, META_KEY]);
+    assert.equal(posts.length, 3);
+    rec = JSON.parse(globalThis.localStorage.getItem(META_KEY));
+    assert.equal(rec.stats.games_finished, 2);
+    assert.equal(rec.stats.normal_games, 1);
+
+    handlers.pagehide();
+    handlers.beforeunload();
+    handlers.visibilitychange();
+    advance(1000);
+    assert.deepEqual(writes, [META_KEY, META_KEY, META_KEY]);
+    assert.equal(posts.length, 3);
   } finally {
     metaReset();
     Date.now = prevNow;
@@ -310,6 +335,9 @@ test('demo and preview modes do not write or post', () => {
       results: [{ type: 'human', score: 80, happiness: 40, skills: 6, money: 20, activities: 8 }]
     });
     metaUpdate('vidabalance-v2', VERSION, { stats: { games_finished: 9 }, logros: ['first_game'], declared: progress.STATS });
+    globalThis.document.visibilityState = 'hidden';
+    handlers.pagehide();
+    handlers.visibilitychange();
     assert.equal(globalThis.localStorage.getItem(META_KEY), null);
     assert.equal(globalThis.localStorage.getItem(SAVE_KEY), rawSave);
     assert.equal(posts.length, 0);
@@ -405,7 +433,7 @@ test('metaUpdate keeps hitos and posts only to a parent frame', () => {
 });
 
 test('app version is plain semver', () => {
-  assert.equal(progress.APP_VERSION, '1.0.2');
+  assert.equal(progress.APP_VERSION, '1.0.3');
   assert.equal(progress.STATS.length <= 20, true);
   assert.equal(progress.STATS.every((item) => item.monotonic === true), true);
 });
