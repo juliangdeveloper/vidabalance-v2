@@ -1,6 +1,6 @@
 (function (root) {
   const SLUG = 'vidabalance-v2';
-  const APP_VERSION = '1.0.8';
+  const APP_VERSION = '1.0.9';
   const SAVE_KEY = 'vidabalance.save';
   const META_KEY = 'meta.v1.' + SLUG;
 
