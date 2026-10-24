@@ -6,7 +6,7 @@ const progress = require('../progress.js');
 const SAVE_KEY = progress.SAVE_KEY;
 const META_KEY = progress.META_KEY;
 const CORRUPT_KEY = META_KEY + '.corrupt';
-const VERSION = '1.0.7';
+const VERSION = '1.0.8';
 
 const handlers = {};
 globalThis.addEventListener = (type, fn) => { handlers[type] = fn; };
@@ -433,7 +433,7 @@ test('metaUpdate keeps hitos and posts only to a parent frame', () => {
 });
 
 test('app version is plain semver', () => {
-  assert.equal(progress.APP_VERSION, '1.0.7');
+  assert.equal(progress.APP_VERSION, '1.0.8');
   assert.equal(Object.keys(progress.STATS).length <= 20, true);
   assert.equal(Object.keys(progress.STATS).every((key) => progress.STATS[key].tipo !== 'valor_actual'), true);
 });
