@@ -13,14 +13,9 @@
     fases_completadas: 2,
     tipo: TIPO_PROYECTO.AREA,
     aportes: [
-      { id: 'programacion', aporte: 2, fuente: 'creacion' },
-      { id: 'juegos', aporte: 3, fuente: 'creacion' },
-      { id: 'ux', aporte: 1, fuente: 'creacion' },
-      { id: 'matematicas', aporte: 1, fuente: 'creacion' },
-      { id: 'equilibrio', aporte: 2, fuente: 'uso' },
-      { id: 'estrategia', aporte: 2, fuente: 'uso' },
-      { id: 'disciplina', aporte: 1, fuente: 'uso' },
-      { id: 'perseverancia', aporte: 1, fuente: 'uso' }
+      { stat: 'Programación', exp: 5, fuente: 'creacion' },
+      { stat: 'Diseño', exp: 7, fuente: 'creacion' },
+      { stat: 'Planificación', exp: 20, fuente: 'uso' }
     ]
   };
 
@@ -44,6 +39,9 @@
     return Object.keys(stats).map(function (key) { return { key: key, tipo: stats[key] && stats[key].tipo }; });
   }
 
+  const APORTE_STAT_MAX = 32;
+  const APORTE_EXP_MAX = 99;
+
   function aportesValidos(lista) {
     if (!Array.isArray(lista)) return null;
     const out = [];
@@ -51,17 +49,17 @@
     for (let i = 0; i < lista.length; i++) {
       const it = lista[i];
       if (!it || typeof it !== 'object' || Array.isArray(it)) return null;
-      const id = it.id;
+      const stat = it.stat;
+      const exp = it.exp;
       const fuente = it.fuente;
-      const aporte = it.aporte;
-      if (typeof id !== 'string' || !/^[a-z][a-z0-9]*$/.test(id)) return null;
+      if (typeof stat !== 'string' || !stat.trim() || stat !== stat.trim() || Array.from(stat).length > APORTE_STAT_MAX) return null;
       if (fuente !== 'creacion' && fuente !== 'uso') return null;
-      if (!proyectoInt(aporte, 1, 3)) return null;
-      const key = id + '\n' + fuente;
+      if (!(proyectoInt(exp, 1, APORTE_EXP_MAX))) return null;
+      const key = stat + '\n' + fuente;
       if (seen[key]) return null;
       if (Object.keys(it).length !== 3) return null;
       seen[key] = true;
-      out.push({ id: id, aporte: aporte, fuente: fuente });
+      out.push({ stat: stat, exp: exp, fuente: fuente });
     }
     return out;
   }
@@ -91,6 +89,36 @@
     proyectoSource = p === null ? PROYECTO : p;
   }
 
+  function metaDeclararProyecto(slug, version) {
+    try {
+      const store = globalThis.localStorage;
+      if (!store || !slug) return null;
+      const clave = 'meta.v1.' + slug;
+      const raw = store.getItem(clave);
+      let base = null;
+      if (raw != null && raw !== '') {
+        try {
+          const previo = JSON.parse(raw);
+          if (previo && typeof previo === 'object' && !Array.isArray(previo) && previo.v === 1 && previo.slug === slug) base = previo;
+        } catch (e) {
+          base = null;
+        }
+        if (!base) store.setItem(clave + '.corrupt', String(raw));
+      }
+      if (!base) base = { v: 1, slug: slug, version: String(version == null ? '' : version).replace(/^[vV]/, ''), updatedAt: new Date().toISOString(), stats: {}, logros: [], hitos: {} };
+      const p = metaProyecto(proyectoSource);
+      if (p) base.proyecto = p;
+      const texto = JSON.stringify(base);
+      if (texto !== raw) {
+        store.setItem(clave, texto);
+        if (typeof window !== 'undefined' && window.parent && window.parent !== window) window.parent.postMessage({ type: 'meta', key: clave, data: base }, location.origin);
+      }
+      return base;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function withProyecto(record) {
     const p = metaProyecto(proyectoSource);
     if (p) record.proyecto = p;
@@ -104,15 +132,6 @@
     }
     gate.last = 0;
     gate.pending = null;
-  }
-
-  function isDemo() {
-    try {
-      const search = root.location && typeof root.location.search === 'string' ? root.location.search : '';
-      return /(?:\?|&)(?:demo|preview)=1(?:&|$)/.test(search);
-    } catch (e) {
-      return false;
-    }
   }
 
   function plainVersion(version) {
@@ -246,7 +265,6 @@
   }
 
   function commit() {
-    if (isDemo()) { gate.pending = null; return null; }
     if (!gate.pending) return null;
     const wait = waitLeft();
     if (wait > 0) { arm(wait); return null; }
@@ -262,7 +280,7 @@
   }
 
   function flushPending() {
-    if (isDemo() || !gate.pending) return null;
+    if (!gate.pending) return null;
     const job = gate.pending;
     gate.pending = null;
     if (gate.timer) {
@@ -310,7 +328,6 @@
   function metaUpdate(slug, version, payload) {
     try {
       bind();
-      if (isDemo()) return null;
       gate.pending = { slug: slug, version: plainVersion(version), payload: payload || {} };
       return commit();
     } catch (e) {
@@ -327,12 +344,14 @@
   root.enumValido = enumValido;
   root.statConservaMaximo = statConservaMaximo;
   root.statsDeclarados = statsDeclarados;
+  root.metaDeclararProyecto = metaDeclararProyecto;
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       metaUpdate: metaUpdate,
       metaReset: metaReset,
       metaProyecto: metaProyecto,
       metaSetProyecto: metaSetProyecto,
+      metaDeclararProyecto: metaDeclararProyecto,
       PROYECTO: PROYECTO,
       FASE: FASE,
       ESTADO_FASE: ESTADO_FASE,

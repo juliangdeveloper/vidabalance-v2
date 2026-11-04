@@ -16,6 +16,7 @@
 
 ## Stack
 Un solo `index.html` con HTML, CSS y JavaScript vanilla. Sin dependencias ni servidor.
+Al abrirse guarda el progreso en `localStorage` (`meta.v1.vidabalance-v2`), que lee el [portafolio](https://juliangdeveloper.github.io/).
 
 ## Otros juegos de fiesta
 - 🌊 [Flood-It Party](https://github.com/juliangdeveloper/floodit-party) · [jugar](https://juliangdeveloper.github.io/floodit-party/)

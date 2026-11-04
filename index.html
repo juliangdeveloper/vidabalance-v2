@@ -242,8 +242,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 <div class="tut-hl" id="tutHl"></div>
 <div class="tut-box" id="tutBox"><p id="tutTx"></p><button class="btn btn-p btn-sm" id="tutBtn" onclick="tutNext()">Siguiente</button></div>
 
-<script src="meta.js?v=1.0.10"></script>
-<script src="progress.js?v=1.0.10"></script>
+<script src="meta.js?v=1.0.12"></script>
+<script src="progress.js?v=1.0.12"></script>
 <script>
 const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre','Enero+1','Febrero+1','Marzo+1','Abril+1'];
 
@@ -706,7 +706,7 @@ const TUT=[
 ];
 function startTut(){
   G.isTut=true;
-  G.players=[{name:'Tú',type:'human',color:PCOL[0],e:4,emax:8,m:3,h:0,sk:0,tok:4,actsUsed:new Set()},{name:'IA Demo',type:'easy',color:PCOL[1],e:4,emax:8,m:3,h:0,sk:0,tok:4,actsUsed:new Set()}];
+  G.players=[{name:'Tú',type:'human',color:PCOL[0],e:4,emax:8,m:3,h:0,sk:0,tok:4,actsUsed:new Set()},{name:'IA',type:'easy',color:PCOL[1],e:4,emax:8,m:3,h:0,sk:0,tok:4,actsUsed:new Set()}];
   G.maxRounds=3;G.round=0;G.pet=[false,false];
   G.usedActs=[new Set(),new Set()];
   G.fatigue=[{},{}];G.sabotaged=[false,false];G.skipNext=[false,false];
@@ -730,6 +730,7 @@ function hideRules(){document.getElementById('rulesM').classList.remove('show')}
 
 renderPS(2);
 try{if(typeof backfillMeta==='function')backfillMeta(APP_VERSION)}catch(e){}
+try{if(typeof metaDeclararProyecto==='function')metaDeclararProyecto('vidabalance-v2',APP_VERSION)}catch(e){}
 </script>
 </body>
 </html>

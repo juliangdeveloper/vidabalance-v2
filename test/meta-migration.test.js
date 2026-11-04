@@ -313,37 +313,6 @@ test('normal writes stay at one per second and a hide flushes a pending change',
   }
 });
 
-test('demo and preview modes do not write or post', () => {
-  const posts = [];
-  globalThis.window = {
-    parent: { postMessage(data, origin) { posts.push({ data: data, origin: origin }); } }
-  };
-  globalThis.localStorage.setItem(SAVE_KEY, JSON.stringify({ games_finished: 6 }));
-  const rawSave = globalThis.localStorage.getItem(SAVE_KEY);
-
-  for (const search of ['?demo=1', '?preview=1', '?x=2&demo=1']) {
-    metaReset();
-    progress.resetProgressState();
-    globalThis.location.search = search;
-    posts.length = 0;
-    progress.backfillMeta(VERSION);
-    progress.noteTutorialComplete();
-    progress.recordFinishedMatch(VERSION, {
-      months: 12,
-      playerCount: 4,
-      ai: false,
-      results: [{ type: 'human', score: 80, happiness: 40, skills: 6, money: 20, activities: 8 }]
-    });
-    metaUpdate('vidabalance-v2', VERSION, { stats: { games_finished: 9 }, logros: ['first_game'], declared: progress.STATS });
-    globalThis.document.visibilityState = 'hidden';
-    handlers.pagehide();
-    handlers.visibilitychange();
-    assert.equal(globalThis.localStorage.getItem(META_KEY), null);
-    assert.equal(globalThis.localStorage.getItem(SAVE_KEY), rawSave);
-    assert.equal(posts.length, 0);
-  }
-});
-
 test('existing save stays byte-identical after load and play', () => {
   const rawSave = JSON.stringify({
     legacy_note: 'keep',
@@ -433,7 +402,7 @@ test('metaUpdate keeps hitos and posts only to a parent frame', () => {
 });
 
 test('app version is plain semver', () => {
-  assert.equal(progress.APP_VERSION, '1.0.11');
+  assert.equal(progress.APP_VERSION, '1.0.12');
   assert.equal(Object.keys(progress.STATS).length <= 20, true);
   assert.equal(Object.keys(progress.STATS).every((key) => progress.STATS[key].tipo !== 'valor_actual'), true);
 });
