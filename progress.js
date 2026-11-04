@@ -1,6 +1,6 @@
 (function (root) {
   const SLUG = 'vidabalance-v2';
-  const APP_VERSION = '1.0.11';
+  const APP_VERSION = '1.0.12';
   const SAVE_KEY = 'vidabalance.save';
   const META_KEY = 'meta.v1.' + SLUG;
 
@@ -43,15 +43,6 @@
 
   let memory = null;
   let tutorialPending = false;
-
-  function isDemo() {
-    try {
-      const search = root.location && typeof root.location.search === 'string' ? root.location.search : '';
-      return /(?:\?|&)(?:demo|preview)=1(?:&|$)/.test(search);
-    } catch (e) {
-      return false;
-    }
-  }
 
   function num(v) {
     if (typeof v !== 'number' || !Number.isFinite(v) || v < 0) return 0;
@@ -139,7 +130,6 @@
 
   function backfillMeta(version) {
     try {
-      if (isDemo()) return;
       const raw = root.localStorage.getItem(META_KEY);
       if (raw !== null && recordValid(raw)) {
         memory = readMetaStats();
@@ -150,13 +140,11 @@
   }
 
   function noteTutorialComplete() {
-    if (isDemo()) return;
     tutorialPending = true;
   }
 
   function recordFinishedMatch(version, match) {
     try {
-      if (isDemo()) return;
       if (match && match.tutorial) return;
       const stats = baseStats();
       const months = num(match && match.months);
