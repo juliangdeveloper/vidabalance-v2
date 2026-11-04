@@ -433,7 +433,7 @@ test('metaUpdate keeps hitos and posts only to a parent frame', () => {
 });
 
 test('app version is plain semver', () => {
-  assert.equal(progress.APP_VERSION, '1.0.10');
+  assert.equal(progress.APP_VERSION, '1.0.11');
   assert.equal(Object.keys(progress.STATS).length <= 20, true);
   assert.equal(Object.keys(progress.STATS).every((key) => progress.STATS[key].tipo !== 'valor_actual'), true);
 });
